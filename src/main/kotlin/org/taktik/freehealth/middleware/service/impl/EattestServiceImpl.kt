@@ -42,6 +42,7 @@ import be.fgov.ehealth.standards.kmehr.cd.v1.CDCONTENT
 import be.fgov.ehealth.standards.kmehr.cd.v1.CDCONTENTschemes
 import be.fgov.ehealth.standards.kmehr.cd.v1.CDCONTENTschemes.CD_NIHDI
 import be.fgov.ehealth.standards.kmehr.cd.v1.CDCONTENTschemes.CD_NIHDI_RELATEDSERVICE
+import be.fgov.ehealth.standards.kmehr.cd.v1.CDCONTENTschemes.LOCAL
 import be.fgov.ehealth.standards.kmehr.cd.v1.CDERRORMYCARENETschemes
 import be.fgov.ehealth.standards.kmehr.cd.v1.CDHCPARTY
 import be.fgov.ehealth.standards.kmehr.cd.v1.CDHCPARTYschemes
@@ -171,7 +172,6 @@ class EattestServiceImpl(private val stsService: STSService) : EattestService {
 
         val now = DateTime.now().withMillisOfSecond(0)
         val refDateTime = dateTime(referenceDate) ?: now
-        val theDayBeforeRefDate = refDateTime.plusDays(-1)
 
         return extractEtk(credential)?.let {
             val sendTransactionRequest =
@@ -181,7 +181,6 @@ class EattestServiceImpl(private val stsService: STSService) : EattestService {
                     hcpSsin,
                     hcpFirstName,
                     hcpLastName,
-                    hcpCbe,
                     patientSsin,
                     patientFirstName,
                     patientLastName,
@@ -383,7 +382,6 @@ class EattestServiceImpl(private val stsService: STSService) : EattestService {
 
         val now = DateTime.now().withMillisOfSecond(0)
         val refDateTime = dateTime(referenceDate) ?: now
-        val theDayBeforeRefDate = refDateTime.plusDays(-1)
 
         return extractEtk(credential)?.let {
             val sendTransactionRequest =
@@ -1549,6 +1547,13 @@ class EattestServiceImpl(private val stsService: STSService) : EattestService {
                                                 code.relativeService
                                             })
                                         }
+                                    },
+                                    code.justification?.let {
+                                        ContentType().apply {
+                                            cds.add(CDCONTENT().apply {
+                                                s = LOCAL; sl = "NIHDI-CLAIM-EXEMPTION"; sv = "1.0"; value = it
+                                            })
+                                        }
                                     }).filterNotNull())
                                 quantity = QuantityType().apply { decimal = BigDecimal(code.quantity) }
                             }, ItemType().apply {
@@ -1745,7 +1750,6 @@ class EattestServiceImpl(private val stsService: STSService) : EattestService {
         hcpSsin: String,
         hcpFirstName: String,
         hcpLastName: String,
-        hcpCbe: String,
         patientSsin: String,
         patientFirstName: String,
         patientLastName: String,
@@ -1759,7 +1763,6 @@ class EattestServiceImpl(private val stsService: STSService) : EattestService {
         referenceDate: Int?) : SendTransactionRequest {
 
         val refDateTime = dateTime(referenceDate) ?: now
-        val theDayBeforeRefDate = refDateTime.plusDays(-1)
 
         return SendTransactionRequest().apply {
             messageProtocoleSchemaVersion = BigDecimal("1.25")
