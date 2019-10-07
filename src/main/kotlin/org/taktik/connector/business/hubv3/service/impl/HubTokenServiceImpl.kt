@@ -149,7 +149,7 @@ class HubTokenServiceImpl(private val keyDepotService: KeyDepotService) : HubTok
                 getCrypto(keystoreId, keystore, passPhrase),
                 hubId,
                 hubApplication,
-                keyDepotManager.getEtk(IdentifierType.EHP, hubId, hubApplication ?: "", keystoreId)
+                keyDepotManager.getEtk(IdentifierType.EHP, hubId, hubApplication ?: "", keystoreId, false)
             ),
             PutTransactionResponse::class.java
         )
@@ -621,7 +621,7 @@ class HubTokenServiceImpl(private val keyDepotService: KeyDepotService) : HubTok
                 getCrypto(keystoreId, keystore, passPhrase),
                 hubId,
                 hubApplication,
-                keyDepotManager.getEtk(IdentifierType.EHP, hubId, hubApplication ?: "", keystoreId)
+                keyDepotManager.getEtk(IdentifierType.EHP, hubId, hubApplication ?: "", keystoreId, false)
             ),
             PutTransactionSetResponse::class.java
         )
@@ -684,7 +684,7 @@ class HubTokenServiceImpl(private val keyDepotService: KeyDepotService) : HubTok
             val service =
                 ServiceFactory.getIntraHubPort(endpoint, token, keystoreId, keystore, passPhrase, operation).setPayload(request)
             val genericResponse = org.taktik.connector.technical.ws.ServiceFactory.getGenericWsSender().send(service)
-            log.debug(genericResponse.asString())
+            log.debug(ConnectorXmlUtils.toString(genericResponse.soapMessage))
             return genericResponse.asObject(clazz)
         } catch (ex: SOAPException) {
             throw TechnicalConnectorException(TechnicalConnectorExceptionValues.ERROR_WS, ex, ex.message)

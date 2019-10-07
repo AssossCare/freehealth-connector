@@ -61,7 +61,6 @@ import javax.activation.DataHandler
 import org.bouncycastle.cms.CMSException
 import org.bouncycastle.util.encoders.Base64
 import org.slf4j.LoggerFactory
-import org.taktik.connector.technical.service.sts.security.Credential
 import java.util.UUID
 
 class SendMessageBuilderImpl(private val keydepotManager: KeyDepotManager) : SendMessageBuilder {
@@ -458,24 +457,25 @@ class SendMessageBuilderImpl(private val keydepotManager: KeyDepotManager) : Sen
 
     @Throws(TechnicalConnectorException::class, EhboxBusinessConnectorException::class)
     private fun getETKForAddressee(addressee: Addressee, keystoreId: UUID): Set<EncryptionToken> {
-        if ("ALL" != addressee.id) {
+        return if ("ALL" != addressee.id) {
             val etkSet =
                 this.keydepotManager.getEtkSet(
                     addressee.identifierTypeHelper,
                     addressee.idAsLong,
                     addressee.applicationId,
-                    keystoreId
-                )
-            return if (etkSet.isEmpty()) {
+                    keystoreId,
+                    false
+                                              )
+            if (etkSet.isEmpty()) {
                 throw TechnicalConnectorException(
                     TechnicalConnectorExceptionValues.ERROR_GENERAL,
                     "could not retrieve Etk for known addressee " + addressee
-                )
+                                                 )
             } else {
                 etkSet
             }
         } else {
-            return HashSet()
+            HashSet()
         }
     }
 
