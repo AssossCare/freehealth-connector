@@ -164,6 +164,7 @@ class HubTokenServiceImpl(private val keyDepotService: KeyDepotService) : HubTok
         passPhrase: String,
         request: RevokeTransactionRequest
     ): RevokeTransactionResponse {
+        log.debug(ConnectorXmlUtils.toString(request))
         return this.executeOperation(
             token,
             endpoint,
@@ -684,7 +685,7 @@ class HubTokenServiceImpl(private val keyDepotService: KeyDepotService) : HubTok
             val service =
                 ServiceFactory.getIntraHubPort(endpoint, token, keystoreId, keystore, passPhrase, operation).setPayload(request)
             val genericResponse = org.taktik.connector.technical.ws.ServiceFactory.getGenericWsSender().send(service)
-            log.debug(ConnectorXmlUtils.toString(genericResponse.soapMessage))
+            log.debug(ConnectorXmlUtils.toString(genericResponse.asObject(clazz)))
             return genericResponse.asObject(clazz)
         } catch (ex: SOAPException) {
             throw TechnicalConnectorException(TechnicalConnectorExceptionValues.ERROR_WS, ex, ex.message)
