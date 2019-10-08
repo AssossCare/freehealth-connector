@@ -16,9 +16,17 @@ public final class McnConfigUtil {
    }
 
    public static McnPackageInfo retrievePackageInfo(String componentName, String licenseUsername, String licensePassword) {
-      String userName = licenseUsername != null ? licenseUsername : configValidator.getProperty(componentName + "." + PACKAGE_LICENSE_USERNAME, "${mycarenet.license.username}");
-      String password = licensePassword != null ? licensePassword : configValidator.getProperty(componentName + "." + PACKAGE_LICENSE_PASSWORD, "${mycarenet.license.password}");
-      String name = configValidator.getProperty(componentName + "." + PACKAGE_LICENSE_NAME, "${package.name}");
+      return retrievePackageInfo(componentName, licenseUsername,licensePassword);
+   }
+
+   public static McnPackageInfo retrievePackageInfo(String componentName, String professionName, String licenseUsername, String licensePassword) {
+      String userName = licenseUsername != null ? licenseUsername : configValidator.getProperty(componentName + "." + PACKAGE_LICENSE_USERNAME + (professionName != null ? "." + professionName : ""), "${mycarenet.license.username" + (professionName != null ? "." + professionName : "") + "}");
+      String password = licensePassword != null ? licensePassword : configValidator.getProperty(componentName + "." + PACKAGE_LICENSE_PASSWORD + (professionName != null ? "." + professionName : ""), "${mycarenet.license.password" + (professionName != null ? "." + professionName : "") + "}");
+      //if property not found fallback to default without profession
+      userName = ("${mycarenet.license.username" + (professionName != null ? "." + professionName : "") + "}").equals(userName) ? configValidator.getProperty(componentName + "." + PACKAGE_LICENSE_USERNAME, "${mycarenet.license.username" + "}") : userName;
+      password = ("${mycarenet.license.password" + (professionName != null ? "." + professionName : "") + "}").equals(password) ? configValidator.getProperty(componentName + "." + PACKAGE_LICENSE_PASSWORD, "${mycarenet.license.password" + "}") : password;
+
+      String name = configValidator.getProperty(componentName + "." + PACKAGE_LICENSE_NAME, "${mycarenet.package.name}");
       return new McnPackageInfo(userName, password, name);
    }
 }

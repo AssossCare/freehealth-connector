@@ -30,6 +30,7 @@ import com.google.gson.Gson
 import com.sun.xml.messaging.saaj.soap.impl.ElementImpl
 import com.sun.xml.messaging.saaj.soap.ver1_1.DetailEntry1_1Impl
 import ma.glasnost.orika.MapperFacade
+import org.apache.commons.logging.LogFactory
 import org.joda.time.DateTime
 import org.slf4j.LoggerFactory
 import org.springframework.security.core.context.SecurityContextHolder
@@ -38,6 +39,7 @@ import org.taktik.connector.business.mycarenetdomaincommons.util.McnConfigUtil
 import org.taktik.connector.business.mycarenetdomaincommons.util.PropertyUtil
 import org.taktik.connector.technical.config.ConfigFactory
 import org.taktik.connector.technical.idgenerator.IdGeneratorFactory
+import org.taktik.connector.technical.utils.ConnectorXmlUtils
 import org.taktik.connector.technical.utils.MarshallerHelper
 import org.taktik.freehealth.middleware.dao.User
 import org.taktik.freehealth.middleware.dto.mycarenet.MycarenetError
@@ -62,7 +64,8 @@ import javax.xml.xpath.XPathFactory
 
 @Service
 class GenInsServiceImpl(val stsService: STSService, val mapper: MapperFacade) : GenInsService {
-    private val log = LoggerFactory.getLogger(this.javaClass)
+    //private val log = LoggerFactory.getLogger(this.javaClass)
+    val log = LogFactory.getLog(this::class.java)
     private val freehealthGenInsService: org.taktik.connector.business.genins.service.GenInsService =
         org.taktik.connector.business.genins.service.impl.GenInsServiceImpl()
     private val GenInsErrors =
@@ -118,7 +121,7 @@ class GenInsServiceImpl(val stsService: STSService, val mapper: MapperFacade) : 
         assert(patientSsin != null || io != null && ioMembership != null)
 
         val principal = SecurityContextHolder.getContext().authentication?.principal as? User
-        val packageInfo = McnConfigUtil.retrievePackageInfo("genins", principal?.mcnLicense, principal?.mcnPassword)
+        val packageInfo = McnConfigUtil.retrievePackageInfo("genins", hcpQuality, principal?.mcnLicense, principal?.mcnPassword)
 
         log.info("getGeneralInsurability called with principal "+(principal?:"<ANONYMOUS>")+" and license " + (principal?.mcnLicense ?: "<DEFAULT>"))
 
@@ -205,9 +208,9 @@ class GenInsServiceImpl(val stsService: STSService, val mapper: MapperFacade) : 
                                 )
             val xmlData = kmehrRequestMarshaller.toXMLByteArray(request)
 
-            if (log.isDebugEnabled) {
-                log.debug("Genins request: {}", xmlData.toString(Charsets.UTF_8))
-            }
+
+            log.debug(ConnectorXmlUtils.toString(request))
+
 
             val genInsResponse = freehealthGenInsService.getInsurability(samlToken, request)
             val genInsResponseDTO = genInsResponse.toInsurabilityInfoDto()
