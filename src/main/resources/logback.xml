@@ -10,5 +10,6 @@
 	<logger name="org.taktik.connector.business.hubv3.service" level="DEBUG" />
 	<logger name="org.taktik.freehealth.middleware.service" level="DEBUG" />
 	<logger name="org.taktik.freehealth.middleware.service.impl" level="DEBUG" />
+	<logger name="org.taktik.connector.business.common.helper" level="DEBUG" />
 	<logger name="org.taktik.connector.technical.validator" level="DEBUG" />
 </configuration>
