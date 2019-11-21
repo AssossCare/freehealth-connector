@@ -1,5 +1,10 @@
 package org.taktik.connector.business.common.helper;
 
+import org.apache.commons.logging.LogFactory;
+import org.apache.commons.logging.Log;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.taktik.connector.business.consultrn.service.impl.ConsultrnServiceImpl;
 import org.taktik.connector.technical.exception.TechnicalConnectorException;
 import org.taktik.connector.technical.exception.TechnicalConnectorExceptionValues;
 import org.taktik.connector.technical.service.sts.security.SAMLToken;
@@ -19,14 +24,18 @@ import org.apache.commons.collections.CollectionUtils;
 import org.w3c.dom.Node;
 
 public final class EhealthServiceHelper {
+   private static final Log LOG = LogFactory.getLog(EhealthServiceHelper.class);
+
    private EhealthServiceHelper() {
    }
 
    public static <T extends ResponseType> T callEhealthServiceV1(SAMLToken token, GenericRequest service, Object request, Class<T> clazz, EhealthReplyValidator ehealthReplyValidator) throws TechnicalConnectorException {
       try {
          service.setPayload(request);
+         LOG.debug("request = " + ConnectorXmlUtils.toString(service.getPayload()));
          T response = ServiceFactory.getGenericWsSender().send(service).asObject(clazz);
          ehealthReplyValidator.validateReplyStatus(response);
+         LOG.debug("response = " + ConnectorXmlUtils.toString(response));
          return response;
       } catch (SOAPException ex) {
          throw new TechnicalConnectorException(TechnicalConnectorExceptionValues.ERROR_WS, ex, ex.getMessage());
@@ -36,8 +45,10 @@ public final class EhealthServiceHelper {
    public static <T extends be.fgov.ehealth.commons._1_0.protocol.ResponseType> T callEhealthService_1_0(SAMLToken token, GenericRequest service, Object request, Class<T> clazz, EhealthReplyValidator ehealthReplyValidator) throws TechnicalConnectorException {
       try {
          service.setPayload(request);
+         LOG.debug("request = " + ConnectorXmlUtils.toString(service.getPayload()));
          T response = ServiceFactory.getGenericWsSender().send(service).asObject(clazz);
          ehealthReplyValidator.validateReplyStatus(response);
+         LOG.debug("response = " + ConnectorXmlUtils.toString(response));
          return response;
       } catch (SOAPException ex) {
          throw new TechnicalConnectorException(TechnicalConnectorExceptionValues.ERROR_WS, ex, ex.getMessage());

@@ -39,6 +39,7 @@ import org.taktik.connector.business.mycarenetdomaincommons.util.PropertyUtil
 import org.taktik.connector.technical.config.ConfigFactory
 import org.taktik.connector.technical.idgenerator.IdGeneratorFactory
 import org.taktik.connector.technical.utils.MarshallerHelper
+import org.taktik.connector.technical.utils.ConnectorXmlUtils
 import org.taktik.freehealth.middleware.dao.User
 import org.taktik.freehealth.middleware.dto.mycarenet.MycarenetError
 import org.taktik.freehealth.middleware.dto.genins.InsurabilityInfoDto
@@ -210,6 +211,9 @@ class GenInsServiceImpl(val stsService: STSService, val mapper: MapperFacade) : 
             }
 
             val genInsResponse = freehealthGenInsService.getInsurability(samlToken, request)
+
+            log.debug(ConnectorXmlUtils.toString(genInsResponse))
+
             val genInsResponseDTO = genInsResponse.toInsurabilityInfoDto()
 
             genInsResponseDTO.errors = genInsResponse.response.messageFault?.details?.details?.flatMap { extractError(xmlData, it.detailCode, it.location).toList() } ?: listOf()
