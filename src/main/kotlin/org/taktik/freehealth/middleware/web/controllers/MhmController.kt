@@ -39,7 +39,7 @@ import java.util.UUID
 @RequestMapping("/mhm")
 class MhmController(val mhmService: MhmService) {
     @PostMapping("/send/{patientSsin}/verbose", produces = [MediaType.APPLICATION_JSON_UTF8_VALUE])
-    fun sendAttestWithResponse(
+    fun startSubscriptionBySsin(
         @PathVariable patientSsin: String,
         @RequestHeader(name = "X-FHC-keystoreId") keystoreId: UUID,
         @RequestHeader(name = "X-FHC-tokenId") tokenId: UUID,
@@ -70,7 +70,7 @@ class MhmController(val mhmService: MhmService) {
         ioMembership, startDate, isTrial, signatureType)
 
     @PostMapping("/send/{io}/{ioMembership}/verbose", produces = [MediaType.APPLICATION_JSON_UTF8_VALUE])
-    fun sendAttestWithResponse(
+    fun startSubscriptionByIo(
         @PathVariable io: String,
         @PathVariable ioMembership: String,
         @RequestHeader(name = "X-FHC-keystoreId") keystoreId: UUID,
