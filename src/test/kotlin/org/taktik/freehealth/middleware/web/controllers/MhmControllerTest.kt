@@ -41,9 +41,9 @@ class MhmControllerTest : EhealthTest() {
         val (keystoreId, tokenId, passPhrase) = registerMmH(restTemplate!!, port, nihii5!!, password5!!)
         val subscription = this.restTemplate.exchange("http://localhost:$port/mhm/send/${"92092412781"}/verbose?hcpNihii=$nihii5&hcpName=$name5&hcpCbe=$cbe5" +
             "&patientFirstName=${"Maxime"}&patientLastName=${"Mennechet"}&patientGender=${"male"}&io=${""}" +
-            "&startDate=${Instant.parse("2017-01-16T00:00:00.00Z").toEpochMilli()}&isTrial=${"false"}" +
+            "&startDate="+(Instant.parse("2017-01-16T00:00:00.00Z").toEpochMilli() / 1000).toInt()+"&isTrial=${"false"}" +
             "&signatureType=${""}",
-            HttpMethod.GET, HttpEntity<Void>(createHeaders(null, null, keystoreId, tokenId, passPhrase)), String::class.java, passPhrase)
+            HttpMethod.POST, HttpEntity<Void>(createHeaders(null, null, keystoreId, tokenId, passPhrase)), String::class.java, passPhrase)
 
         //assertErrors("Start subscription", subscription.body)
     }

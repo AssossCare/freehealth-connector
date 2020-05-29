@@ -85,12 +85,16 @@ import org.taktik.freehealth.middleware.dto.mycarenet.MycarenetError
 import org.taktik.freehealth.middleware.exception.MissingTokenException
 import org.taktik.freehealth.middleware.service.MhmService
 import org.taktik.freehealth.middleware.service.STSService
+import org.taktik.freehealth.utils.FuzzyValues
 import org.w3c.dom.Element
 import org.w3c.dom.Node
 import org.w3c.dom.NodeList
 import java.io.ByteArrayInputStream
 import java.math.BigDecimal
-import java.util.UUID
+import java.text.SimpleDateFormat
+import java.time.Instant
+import java.time.ZoneId
+import java.util.*
 import javax.xml.namespace.NamespaceContext
 import javax.xml.parsers.DocumentBuilderFactory
 import javax.xml.xpath.XPathConstants
@@ -465,9 +469,12 @@ class MhmServiceImpl(private val stsService: STSService) : MhmService {
                                                    s = CDITEMschemes.CD_ITEM_MYCARENET; sv = "1.6"; value =
                                                    "agreementstartdate"
                                                })
-                                               contents.add(ContentType().apply {
-                                                   date = dateTime(startDate)
-                                               })
+                                               FuzzyValues.getJodaDateTime(startDate.toLong())?.let {
+                                                   contents.add(ContentType().apply {
+                                                       date = it
+                                                   })
+                                               }
+
                                            },
                                            ItemType().apply {
                                                ids.add(IDKMEHR().apply {
