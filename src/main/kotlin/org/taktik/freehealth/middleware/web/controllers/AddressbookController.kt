@@ -42,7 +42,18 @@ import javax.servlet.http.HttpServletRequest
 class AddressbookController(val addressbookService: AddressbookService) {
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     @ExceptionHandler(MissingTokenException::class)
-    @ResponseBody fun handleBadRequest(req: HttpServletRequest, ex: Exception): String = ex.message ?: "unknown reason"
+    @ResponseBody
+    fun handleUnauthorizedRequest(req: HttpServletRequest, ex: Exception): String = ex.message ?: "unknown reason"
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(IllegalArgumentException::class)
+    @ResponseBody
+    fun handleBadRequest(req: HttpServletRequest, ex: Exception): String = ex.message ?: "unknown reason"
+
+    @ResponseStatus(HttpStatus.BAD_GATEWAY)
+    @ExceptionHandler(javax.xml.ws.soap.SOAPFaultException::class)
+    @ResponseBody
+    fun handleBadRequest(req: HttpServletRequest, ex: javax.xml.ws.soap.SOAPFaultException): String = ex.message ?: "unknown reason"
 
     @GetMapping("/search/hcp/{lastName}", produces = [MediaType.APPLICATION_JSON_UTF8_VALUE])
     fun searchHcp(
@@ -74,8 +85,8 @@ class AddressbookController(val addressbookService: AddressbookService) {
         @RequestHeader(name = "X-FHC-passPhrase") passPhrase: String,
         @PathVariable nihii: String,
         @RequestParam(required = false) language: String?
-    ): HealthcareParty = addressbookService.getHcp(
-        keystoreId, tokenId, passPhrase, nihii, null, language ?: "fr"
+    ): HealthcareParty? = addressbookService.getHcp(
+        keystoreId, tokenId, passPhrase, nihii, null, null, language ?: "fr"
     )
 
     @GetMapping("/hcp/ssin/{ssin}", produces = [MediaType.APPLICATION_JSON_UTF8_VALUE])
@@ -84,9 +95,10 @@ class AddressbookController(val addressbookService: AddressbookService) {
         @RequestHeader(name = "X-FHC-tokenId") tokenId: UUID,
         @RequestHeader(name = "X-FHC-passPhrase") passPhrase: String,
         @PathVariable ssin: String,
+        @RequestParam(required = false) quality: String?,
         @RequestParam(required = false) language: String?
-    ): HealthcareParty = addressbookService.getHcp(
-        keystoreId, tokenId, passPhrase, null, ssin, language ?: "fr"
+    ): HealthcareParty? = addressbookService.getHcp(
+        keystoreId, tokenId, passPhrase, null, ssin, quality, language ?: "fr"
     )
 
     @GetMapping("/org/nihii/{nihii}", produces = [MediaType.APPLICATION_JSON_UTF8_VALUE])
@@ -96,7 +108,7 @@ class AddressbookController(val addressbookService: AddressbookService) {
         @RequestHeader(name = "X-FHC-passPhrase") passPhrase: String,
         @PathVariable nihii: String,
         @RequestParam(required = false) language: String?
-    ): HealthcareParty = addressbookService.getOrg(
+    ): HealthcareParty? = addressbookService.getOrg(
         keystoreId, tokenId, passPhrase, null, null, nihii, language ?: "fr"
     )
 
@@ -107,7 +119,7 @@ class AddressbookController(val addressbookService: AddressbookService) {
         @RequestHeader(name = "X-FHC-passPhrase") passPhrase: String,
         @PathVariable cbe: String?,
         @RequestParam(required = false) language: String?
-    ): HealthcareParty = addressbookService.getOrg(
+    ): HealthcareParty? = addressbookService.getOrg(
         keystoreId, tokenId, passPhrase, null, cbe, null, language ?: "fr"
     )
 
@@ -118,7 +130,7 @@ class AddressbookController(val addressbookService: AddressbookService) {
         @RequestHeader(name = "X-FHC-passPhrase") passPhrase: String,
         @PathVariable ehp: String?,
         @RequestParam(required = false) language: String?
-    ): HealthcareParty = addressbookService.getOrg(
+    ): HealthcareParty? = addressbookService.getOrg(
         keystoreId, tokenId, passPhrase, ehp, null, null, language ?: "fr"
     )
 }

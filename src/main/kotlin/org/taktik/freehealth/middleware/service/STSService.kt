@@ -27,7 +27,7 @@ import org.taktik.connector.technical.service.sts.security.impl.KeyStoreCredenti
 import org.taktik.freehealth.middleware.domain.sts.SamlTokenResult
 import org.taktik.freehealth.middleware.dto.CertificateInfo
 import java.security.KeyStore
-import java.util.*
+import java.util.UUID
 
 interface STSService {
     fun uploadKeystore(data: ByteArray): UUID
@@ -36,13 +36,12 @@ interface STSService {
         keystoreId: UUID,
         nihiiOrSsin: String,
         passPhrase: String,
-        medicalHouse: Boolean = false,
-        guardPost: Boolean = false,
+        quality: String = "doctor",
         tokenId: UUID? = null,
         extraDesignators: List<Pair<String, String>> = listOf()
     ): SamlTokenResult?
 
-    fun registerToken(tokenId: UUID, token: String)
+    fun registerToken(tokenId: UUID, token: String, quality: String = "doctor")
     fun getSAMLToken(tokenId: UUID, keystoreId: UUID, passPhrase: String): SAMLToken?
     fun getKeyStore(keystoreId: UUID, passPhrase: String): KeyStore?
     fun checkIfKeystoreExist(keystoreId: UUID): Boolean

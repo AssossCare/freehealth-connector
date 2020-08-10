@@ -21,17 +21,6 @@
 package org.taktik.connector.business.hubv3.service.impl
 
 import be.fgov.ehealth.etee.crypto.utils.KeyManager
-import org.taktik.connector.business.intrahubcommons.exception.IntraHubBusinessConnectorException
-import org.taktik.connector.business.intrahubcommons.helper.ServiceHelper
-import org.taktik.connector.business.intrahubcommons.security.IntrahubEncryptionUtil
-import org.taktik.connector.business.hubv3.service.HubTokenService
-import org.taktik.connector.business.hubv3.service.ServiceFactory
-import org.taktik.connector.technical.config.impl.ConfigurationModuleBootstrap
-import org.taktik.connector.technical.exception.TechnicalConnectorException
-import org.taktik.connector.technical.exception.TechnicalConnectorExceptionValues
-import org.taktik.connector.technical.service.sts.security.SAMLToken
-import org.taktik.connector.technical.utils.MarshallerHelper
-import org.taktik.connector.technical.utils.impl.JaxbContextFactory
 import be.fgov.ehealth.hubservices.core.v3.DeclareTransactionRequest
 import be.fgov.ehealth.hubservices.core.v3.DeclareTransactionResponse
 import be.fgov.ehealth.hubservices.core.v3.GetAccessRightRequest
@@ -85,20 +74,31 @@ import be.fgov.ehealth.hubservices.core.v3.RevokeTherapeuticLinkResponse
 import be.fgov.ehealth.hubservices.core.v3.RevokeTransactionRequest
 import be.fgov.ehealth.hubservices.core.v3.RevokeTransactionResponse
 import org.apache.commons.logging.LogFactory
-import javax.xml.soap.SOAPException
-import javax.xml.ws.WebServiceException
 import org.slf4j.LoggerFactory
+import org.taktik.connector.business.hubv3.service.HubTokenService
+import org.taktik.connector.business.hubv3.service.ServiceFactory
+import org.taktik.connector.business.intrahubcommons.exception.IntraHubBusinessConnectorException
+import org.taktik.connector.business.intrahubcommons.helper.ServiceHelper
+import org.taktik.connector.business.intrahubcommons.security.IntrahubEncryptionUtil
+import org.taktik.connector.technical.config.impl.ConfigurationModuleBootstrap
+import org.taktik.connector.technical.exception.TechnicalConnectorException
+import org.taktik.connector.technical.exception.TechnicalConnectorExceptionValues
 import org.taktik.connector.technical.service.etee.Crypto
 import org.taktik.connector.technical.service.etee.CryptoFactory
 import org.taktik.connector.technical.service.keydepot.KeyDepotService
 import org.taktik.connector.technical.service.keydepot.impl.KeyDepotManagerImpl
+import org.taktik.connector.technical.service.sts.security.SAMLToken
 import org.taktik.connector.technical.service.sts.security.impl.KeyStoreCredential
 import org.taktik.connector.technical.utils.ConnectorXmlUtils
 import org.taktik.connector.technical.utils.IdentifierType
+import org.taktik.connector.technical.utils.MarshallerHelper
+import org.taktik.connector.technical.utils.impl.JaxbContextFactory
 import java.security.KeyStore
 import java.util.UUID
+import javax.xml.soap.SOAPException
+import javax.xml.ws.WebServiceException
 
-class HubTokenServiceImpl(private val keyDepotService: KeyDepotService) : HubTokenService, ConfigurationModuleBootstrap.ModuleBootstrapHook {
+class HubTokenServiceImpl(keyDepotService: KeyDepotService) : HubTokenService, ConfigurationModuleBootstrap.ModuleBootstrapHook {
 
     val keyDepotManager = KeyDepotManagerImpl.getInstance(keyDepotService)
     val log = LogFactory.getLog(this::class.java)
@@ -106,14 +106,14 @@ class HubTokenServiceImpl(private val keyDepotService: KeyDepotService) : HubTok
     @Throws(TechnicalConnectorException::class)
     override fun declareTransaction(
         endpoint: String,
-        token: SAMLToken,
+        samlToken: SAMLToken,
         keystoreId: UUID,
         keystore: KeyStore,
         passPhrase: String,
         request: DeclareTransactionRequest
     ): DeclareTransactionResponse {
         return this.executeOperation(
-            token,
+            samlToken,
             endpoint,
             keystoreId,
             keystore,
@@ -129,7 +129,7 @@ class HubTokenServiceImpl(private val keyDepotService: KeyDepotService) : HubTok
         endpoint: String,
         hubId: Long,
         hubApplication: String,
-        token: SAMLToken,
+        samlToken: SAMLToken,
         keystoreId: UUID,
         keystore: KeyStore,
         passPhrase: String,
@@ -138,7 +138,7 @@ class HubTokenServiceImpl(private val keyDepotService: KeyDepotService) : HubTok
         val helper = MarshallerHelper(PutTransactionRequest::class.java, PutTransactionRequest::class.java)
         LOG.debug("PutTransactionRequest unsigned request :" + helper.toString(request))
         return this.executeOperation(
-            token,
+            samlToken,
             endpoint,
             keystoreId,
             keystore,
@@ -146,10 +146,10 @@ class HubTokenServiceImpl(private val keyDepotService: KeyDepotService) : HubTok
             "urn:be:fgov:ehealth:intrahub:protocol:v3:PutTransaction",
             IntrahubEncryptionUtil.encryptFolder(
                 request,
-                getCrypto(keystoreId, keystore, passPhrase),
+                getCrypto(keystoreId, keystore, samlToken.quality, passPhrase),
                 hubId,
                 hubApplication,
-                keyDepotManager.getEtk(IdentifierType.EHP, hubId, hubApplication ?: "", keystoreId, false)
+                keyDepotManager.getEtk(IdentifierType.EHP, hubId, hubApplication , keystoreId, false)
             ),
             PutTransactionResponse::class.java
         )
@@ -158,14 +158,14 @@ class HubTokenServiceImpl(private val keyDepotService: KeyDepotService) : HubTok
     @Throws(TechnicalConnectorException::class)
     override fun revokeTransaction(
         endpoint: String,
-        token: SAMLToken,
+        samlToken: SAMLToken,
         keystoreId: UUID,
         keystore: KeyStore,
         passPhrase: String,
         request: RevokeTransactionRequest
     ): RevokeTransactionResponse {
         return this.executeOperation(
-            token,
+            samlToken,
             endpoint,
             keystoreId,
             keystore,
@@ -179,7 +179,7 @@ class HubTokenServiceImpl(private val keyDepotService: KeyDepotService) : HubTok
     @Throws(TechnicalConnectorException::class)
     override fun getTransactionList(
         endpoint: String,
-        token: SAMLToken,
+        samlToken: SAMLToken,
         keystoreId: UUID,
         keystore: KeyStore,
         passPhrase: String,
@@ -187,7 +187,7 @@ class HubTokenServiceImpl(private val keyDepotService: KeyDepotService) : HubTok
     ): GetTransactionListResponse {
         log.debug(ConnectorXmlUtils.toString(request))
         return this.executeOperation(
-            token,
+            samlToken,
             endpoint,
             keystoreId,
             keystore,
@@ -201,14 +201,14 @@ class HubTokenServiceImpl(private val keyDepotService: KeyDepotService) : HubTok
     @Throws(TechnicalConnectorException::class, IntraHubBusinessConnectorException::class)
     override fun getTransaction(
         endpoint: String,
-        token: SAMLToken,
+        samlToken: SAMLToken,
         keystoreId: UUID,
         keystore: KeyStore,
         passPhrase: String,
         request: GetTransactionRequest
     ): GetTransactionResponse {
         return this.executeOperation(
-            token,
+            samlToken,
             endpoint,
             keystoreId,
             keystore,
@@ -222,14 +222,14 @@ class HubTokenServiceImpl(private val keyDepotService: KeyDepotService) : HubTok
     @Throws(TechnicalConnectorException::class)
     override fun requestPublication(
         endpoint: String,
-        token: SAMLToken,
+        samlToken: SAMLToken,
         keystoreId: UUID,
         keystore: KeyStore,
         passPhrase: String,
         request: RequestPublicationRequest
     ): RequestPublicationResponse {
         return this.executeOperation(
-            token,
+            samlToken,
             endpoint,
             keystoreId,
             keystore,
@@ -243,14 +243,14 @@ class HubTokenServiceImpl(private val keyDepotService: KeyDepotService) : HubTok
     @Throws(TechnicalConnectorException::class)
     override fun putHCParty(
         endpoint: String,
-        token: SAMLToken,
+        samlToken: SAMLToken,
         keystoreId: UUID,
         keystore: KeyStore,
         passPhrase: String,
         request: PutHCPartyRequest
     ): PutHCPartyResponse {
         return this.executeOperation(
-            token,
+            samlToken,
             endpoint,
             keystoreId,
             keystore,
@@ -264,14 +264,14 @@ class HubTokenServiceImpl(private val keyDepotService: KeyDepotService) : HubTok
     @Throws(TechnicalConnectorException::class)
     override fun getHCParty(
         endpoint: String,
-        token: SAMLToken,
+        samlToken: SAMLToken,
         keystoreId: UUID,
         keystore: KeyStore,
         passPhrase: String,
         request: GetHCPartyRequest
     ): GetHCPartyResponse {
         return this.executeOperation(
-            token,
+            samlToken,
             endpoint,
             keystoreId,
             keystore,
@@ -285,14 +285,14 @@ class HubTokenServiceImpl(private val keyDepotService: KeyDepotService) : HubTok
     @Throws(TechnicalConnectorException::class)
     override fun putPatient(
         endpoint: String,
-        token: SAMLToken,
+        samlToken: SAMLToken,
         keystoreId: UUID,
         keystore: KeyStore,
         passPhrase: String,
         request: PutPatientRequest
     ): PutPatientResponse {
         return this.executeOperation(
-            token,
+            samlToken,
             endpoint,
             keystoreId,
             keystore,
@@ -306,14 +306,14 @@ class HubTokenServiceImpl(private val keyDepotService: KeyDepotService) : HubTok
     @Throws(TechnicalConnectorException::class)
     override fun getPatient(
         endpoint: String,
-        token: SAMLToken,
+        samlToken: SAMLToken,
         keystoreId: UUID,
         keystore: KeyStore,
         passPhrase: String,
         request: GetPatientRequest
     ): GetPatientResponse {
         return this.executeOperation(
-            token,
+            samlToken,
             endpoint,
             keystoreId,
             keystore,
@@ -327,14 +327,14 @@ class HubTokenServiceImpl(private val keyDepotService: KeyDepotService) : HubTok
     @Throws(TechnicalConnectorException::class)
     override fun putHCPartyConsent(
         endpoint: String,
-        token: SAMLToken,
+        samlToken: SAMLToken,
         keystoreId: UUID,
         keystore: KeyStore,
         passPhrase: String,
         request: PutHCPartyConsentRequest
     ): PutHCPartyConsentResponse {
         return this.executeOperation(
-            token,
+            samlToken,
             endpoint,
             keystoreId,
             keystore,
@@ -348,14 +348,14 @@ class HubTokenServiceImpl(private val keyDepotService: KeyDepotService) : HubTok
     @Throws(TechnicalConnectorException::class)
     override fun getHCPartyConsent(
         endpoint: String,
-        token: SAMLToken,
+        samlToken: SAMLToken,
         keystoreId: UUID,
         keystore: KeyStore,
         passPhrase: String,
         request: GetHCPartyConsentRequest
     ): GetHCPartyConsentResponse {
         return this.executeOperation(
-            token,
+            samlToken,
             endpoint,
             keystoreId,
             keystore,
@@ -369,14 +369,14 @@ class HubTokenServiceImpl(private val keyDepotService: KeyDepotService) : HubTok
     @Throws(TechnicalConnectorException::class)
     override fun revokeHCPartyConsent(
         endpoint: String,
-        token: SAMLToken,
+        samlToken: SAMLToken,
         keystoreId: UUID,
         keystore: KeyStore,
         passPhrase: String,
         request: RevokeHCPartyConsentRequest
     ): RevokeHCPartyConsentResponse {
         return this.executeOperation(
-            token,
+            samlToken,
             endpoint,
             keystoreId,
             keystore,
@@ -390,14 +390,14 @@ class HubTokenServiceImpl(private val keyDepotService: KeyDepotService) : HubTok
     @Throws(TechnicalConnectorException::class)
     override fun putPatientConsent(
         endpoint: String,
-        token: SAMLToken,
+        samlToken: SAMLToken,
         keystoreId: UUID,
         keystore: KeyStore,
         passPhrase: String,
         request: PutPatientConsentRequest
     ): PutPatientConsentResponse {
         return this.executeOperation(
-            token,
+            samlToken,
             endpoint,
             keystoreId,
             keystore,
@@ -411,14 +411,14 @@ class HubTokenServiceImpl(private val keyDepotService: KeyDepotService) : HubTok
     @Throws(TechnicalConnectorException::class)
     override fun getPatientConsent(
         endpoint: String,
-        token: SAMLToken,
+        samlToken: SAMLToken,
         keystoreId: UUID,
         keystore: KeyStore,
         passPhrase: String,
         request: GetPatientConsentRequest
     ): GetPatientConsentResponse {
         return this.executeOperation(
-            token,
+            samlToken,
             endpoint,
             keystoreId,
             keystore,
@@ -432,14 +432,14 @@ class HubTokenServiceImpl(private val keyDepotService: KeyDepotService) : HubTok
     @Throws(TechnicalConnectorException::class)
     override fun revokePatientConsent(
         endpoint: String,
-        token: SAMLToken,
+        samlToken: SAMLToken,
         keystoreId: UUID,
         keystore: KeyStore,
         passPhrase: String,
         request: RevokePatientConsentRequest
     ): RevokePatientConsentResponse {
         return this.executeOperation(
-            token,
+            samlToken,
             endpoint,
             keystoreId,
             keystore,
@@ -453,14 +453,14 @@ class HubTokenServiceImpl(private val keyDepotService: KeyDepotService) : HubTok
     @Throws(TechnicalConnectorException::class)
     override fun putTherapeuticLink(
         endpoint: String,
-        token: SAMLToken,
+        samlToken: SAMLToken,
         keystoreId: UUID,
         keystore: KeyStore,
         passPhrase: String,
         request: PutTherapeuticLinkRequest
     ): PutTherapeuticLinkResponse {
         return this.executeOperation(
-            token,
+            samlToken,
             endpoint,
             keystoreId,
             keystore,
@@ -474,14 +474,14 @@ class HubTokenServiceImpl(private val keyDepotService: KeyDepotService) : HubTok
     @Throws(TechnicalConnectorException::class)
     override fun getTherapeuticLink(
         endpoint: String,
-        token: SAMLToken,
+        samlToken: SAMLToken,
         keystoreId: UUID,
         keystore: KeyStore,
         passPhrase: String,
         request: GetTherapeuticLinkRequest
     ): GetTherapeuticLinkResponse {
         return this.executeOperation(
-            token,
+            samlToken,
             endpoint,
             keystoreId,
             keystore,
@@ -495,14 +495,14 @@ class HubTokenServiceImpl(private val keyDepotService: KeyDepotService) : HubTok
     @Throws(TechnicalConnectorException::class)
     override fun revokeTherapeuticLink(
         endpoint: String,
-        token: SAMLToken,
+        samlToken: SAMLToken,
         keystoreId: UUID,
         keystore: KeyStore,
         passPhrase: String,
         request: RevokeTherapeuticLinkRequest
     ): RevokeTherapeuticLinkResponse {
         return this.executeOperation(
-            token,
+            samlToken,
             endpoint,
             keystoreId,
             keystore,
@@ -516,14 +516,14 @@ class HubTokenServiceImpl(private val keyDepotService: KeyDepotService) : HubTok
     @Throws(TechnicalConnectorException::class)
     override fun putAccessRight(
         endpoint: String,
-        token: SAMLToken,
+        samlToken: SAMLToken,
         keystoreId: UUID,
         keystore: KeyStore,
         passPhrase: String,
         request: PutAccessRightRequest
     ): PutAccessRightResponse {
         return this.executeOperation(
-            token,
+            samlToken,
             endpoint,
             keystoreId,
             keystore,
@@ -537,14 +537,14 @@ class HubTokenServiceImpl(private val keyDepotService: KeyDepotService) : HubTok
     @Throws(TechnicalConnectorException::class)
     override fun getAccessRight(
         endpoint: String,
-        token: SAMLToken,
+        samlToken: SAMLToken,
         keystoreId: UUID,
         keystore: KeyStore,
         passPhrase: String,
         request: GetAccessRightRequest
     ): GetAccessRightResponse {
         return this.executeOperation(
-            token,
+            samlToken,
             endpoint,
             keystoreId,
             keystore,
@@ -558,14 +558,14 @@ class HubTokenServiceImpl(private val keyDepotService: KeyDepotService) : HubTok
     @Throws(TechnicalConnectorException::class)
     override fun revokeAccessRight(
         endpoint: String,
-        token: SAMLToken,
+        samlToken: SAMLToken,
         keystoreId: UUID,
         keystore: KeyStore,
         passPhrase: String,
         request: RevokeAccessRightRequest
     ): RevokeAccessRightResponse {
         return this.executeOperation(
-            token,
+            samlToken,
             endpoint,
             keystoreId,
             keystore,
@@ -579,14 +579,14 @@ class HubTokenServiceImpl(private val keyDepotService: KeyDepotService) : HubTok
     @Throws(TechnicalConnectorException::class)
     override fun getPatientAuditTrail(
         endpoint: String,
-        token: SAMLToken,
+        samlToken: SAMLToken,
         keystoreId: UUID,
         keystore: KeyStore,
         passPhrase: String,
         request: GetPatientAuditTrailRequest
     ): GetPatientAuditTrailResponse {
         return this.executeOperation(
-            token,
+            samlToken,
             endpoint,
             keystoreId,
             keystore,
@@ -602,7 +602,7 @@ class HubTokenServiceImpl(private val keyDepotService: KeyDepotService) : HubTok
         endpoint: String,
         hubId: Long,
         hubApplication: String,
-        token: SAMLToken,
+        samlToken: SAMLToken,
         keystoreId: UUID,
         keystore: KeyStore,
         passPhrase: String,
@@ -610,7 +610,7 @@ class HubTokenServiceImpl(private val keyDepotService: KeyDepotService) : HubTok
     ): PutTransactionSetResponse {
         log.debug(ConnectorXmlUtils.toString(request))
         return this.executeOperation(
-            token,
+            samlToken,
             endpoint,
             keystoreId,
             keystore,
@@ -618,10 +618,10 @@ class HubTokenServiceImpl(private val keyDepotService: KeyDepotService) : HubTok
             "urn:be:fgov:ehealth:intrahub:protocol:v3:PutTransactionSet",
             IntrahubEncryptionUtil.encryptFolder(
                 request,
-                getCrypto(keystoreId, keystore, passPhrase),
+                getCrypto(keystoreId, keystore, samlToken.quality, passPhrase),
                 hubId,
                 hubApplication,
-                keyDepotManager.getEtk(IdentifierType.EHP, hubId, hubApplication ?: "", keystoreId, false)
+                keyDepotManager.getEtk(IdentifierType.EHP, hubId, hubApplication, keystoreId, false)
             ),
             PutTransactionSetResponse::class.java
         )
@@ -630,14 +630,14 @@ class HubTokenServiceImpl(private val keyDepotService: KeyDepotService) : HubTok
     @Throws(TechnicalConnectorException::class)
     override fun getTransactionSet(
         endpoint: String,
-        token: SAMLToken,
+        samlToken: SAMLToken,
         keystoreId: UUID,
         keystore: KeyStore,
         passPhrase: String,
         request: GetTransactionSetRequest
     ): GetTransactionSetResponse {
         return this.executeOperation(
-            token,
+            samlToken,
             endpoint,
             keystoreId,
             keystore,
@@ -651,14 +651,14 @@ class HubTokenServiceImpl(private val keyDepotService: KeyDepotService) : HubTok
     @Throws(TechnicalConnectorException::class)
     override fun getLatestUpdate(
         endpoint: String,
-        token: SAMLToken,
+        samlToken: SAMLToken,
         keystoreId: UUID,
         keystore: KeyStore,
         passPhrase: String,
         request: GetLatestUpdateRequest
     ): GetLatestUpdateResponse {
         return this.executeOperation(
-            token,
+            samlToken,
             endpoint,
             keystoreId,
             keystore,
@@ -671,7 +671,7 @@ class HubTokenServiceImpl(private val keyDepotService: KeyDepotService) : HubTok
 
     @Throws(TechnicalConnectorException::class)
     private fun <T> executeOperation(
-        token: SAMLToken,
+        samlToken: SAMLToken,
         endpoint: String,
         keystoreId: UUID,
         keystore: KeyStore,
@@ -682,7 +682,7 @@ class HubTokenServiceImpl(private val keyDepotService: KeyDepotService) : HubTok
     ): T {
         try {
             val service =
-                ServiceFactory.getIntraHubPort(endpoint, token, keystoreId, keystore, passPhrase, operation).setPayload(request)
+                ServiceFactory.getIntraHubPort(endpoint, samlToken, keystoreId, keystore, passPhrase, operation).setPayload(request)
             val genericResponse = org.taktik.connector.technical.ws.ServiceFactory.getGenericWsSender().send(service)
             log.debug(ConnectorXmlUtils.toString(genericResponse.soapMessage))
             return genericResponse.asObject(clazz)
@@ -693,8 +693,11 @@ class HubTokenServiceImpl(private val keyDepotService: KeyDepotService) : HubTok
         }
     }
 
-    private fun getCrypto(keystoreId: UUID, keystore: KeyStore, passPhrase: String): Crypto {
-        val credential = KeyStoreCredential(keystoreId, keystore, "authentication", passPhrase)
+    private fun getCrypto(keystoreId: UUID,
+        keystore: KeyStore,
+        quality: String,
+        passPhrase: String): Crypto {
+        val credential = KeyStoreCredential(keystoreId, keystore, "authentication", passPhrase, quality)
         val hokPrivateKeys = KeyManager.getDecryptionKeys(keystore, passPhrase.toCharArray())
         return CryptoFactory.getCrypto(credential, hokPrivateKeys)
     }

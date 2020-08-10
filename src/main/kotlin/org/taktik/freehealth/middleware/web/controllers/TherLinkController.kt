@@ -35,6 +35,7 @@ import org.springframework.web.bind.annotation.ResponseBody
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestController
 import org.taktik.connector.business.therlink.domain.HasTherapeuticLinkMessage
+import org.taktik.connector.business.therlink.domain.ProofTypeValues
 import org.taktik.freehealth.middleware.dto.therlink.TherapeuticLinkDto
 import org.taktik.freehealth.middleware.dto.therlink.TherapeuticLinkMessageDto
 import org.taktik.freehealth.middleware.exception.MissingTokenException
@@ -48,7 +49,17 @@ class TherLinkController(val therLinkService: TherLinkService, val mapper: Mappe
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     @ExceptionHandler(MissingTokenException::class)
     @ResponseBody
+    fun handleUnauthorizedRequest(req: HttpServletRequest, ex: Exception): String = ex.message ?: "unknown reason"
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(IllegalArgumentException::class)
+    @ResponseBody
     fun handleBadRequest(req: HttpServletRequest, ex: Exception): String = ex.message ?: "unknown reason"
+
+    @ResponseStatus(HttpStatus.BAD_GATEWAY)
+    @ExceptionHandler(javax.xml.ws.soap.SOAPFaultException::class)
+    @ResponseBody
+    fun handleBadRequest(req: HttpServletRequest, ex: javax.xml.ws.soap.SOAPFaultException): String = ex.message ?: "unknown reason"
 
     @GetMapping("/check/{patientSsin}/{hcpNihii}", produces = [MediaType.APPLICATION_JSON_UTF8_VALUE])
     fun hasTherapeuticLink(
@@ -164,8 +175,9 @@ class TherLinkController(val therLinkService: TherLinkService, val mapper: Mappe
         @RequestParam(required = false) end: Date?,
         @RequestParam(required = false) therLinkType: String?,
         @RequestParam(required = false) comment: String?,
-        @RequestParam(required = false) sign: Boolean?
-    ) = therLinkService.registerTherapeuticLink(
+        @RequestParam(required = false) sign: Boolean?,
+        @RequestParam(required = false) proofType: String?
+                               ) = therLinkService.registerTherapeuticLink(
         keystoreId = keystoreId,
         tokenId = tokenId,
         passPhrase = passPhrase,
@@ -182,7 +194,8 @@ class TherLinkController(val therLinkService: TherLinkService, val mapper: Mappe
         end = end,
         therLinkType = therLinkType,
         comment = comment,
-        sign = sign
+        sign = sign,
+        proofType = proofType?.let { ProofTypeValues.valueOf(it)}
     ).let { mapper.map(it, TherapeuticLinkMessageDto::class.java) }
 
     @PostMapping("/revoke/{patientSsin}/{hcpNihii}", produces = [MediaType.APPLICATION_JSON_UTF8_VALUE])
@@ -203,7 +216,8 @@ class TherLinkController(val therLinkService: TherLinkService, val mapper: Mappe
         @RequestParam(required = false) end: Date?,
         @RequestParam(required = false) therLinkType: String?,
         @RequestParam(required = false) comment: String?,
-        @RequestParam(required = false) sign: Boolean?
+        @RequestParam(required = false) sign: Boolean?,
+        @RequestParam(required = false) proofType: String?
     ) = therLinkService.revokeLink(
         keystoreId = keystoreId,
         tokenId = tokenId,
@@ -221,7 +235,8 @@ class TherLinkController(val therLinkService: TherLinkService, val mapper: Mappe
         end = end,
         therLinkType = therLinkType,
         comment = comment,
-        sign = sign
+        sign = sign,
+        proofType = proofType?.let { ProofTypeValues.valueOf(it)}
     ).let { mapper.map(it, TherapeuticLinkMessageDto::class.java) }
 
     @PostMapping("/revoke", produces = [MediaType.APPLICATION_JSON_UTF8_VALUE])
@@ -230,12 +245,14 @@ class TherLinkController(val therLinkService: TherLinkService, val mapper: Mappe
         @RequestHeader(name = "X-FHC-tokenId") tokenId: UUID,
         @RequestHeader(name = "X-FHC-passPhrase") passPhrase: String,
         @RequestBody therLink: TherapeuticLinkDto,
-        @RequestParam(required = false) sign: Boolean?
+        @RequestParam(required = false) sign: Boolean?,
+        @RequestParam(required = false) proofType: String?
     ) = therLinkService.revokeLink(
         keystoreId = keystoreId,
         tokenId = tokenId,
         passPhrase = passPhrase,
         therLink = mapper.map(therLink, org.taktik.connector.business.therlink.domain.TherapeuticLink::class.java),
-        sign = sign
+        sign = sign,
+        proofType = proofType?.let { ProofTypeValues.valueOf(it)}
     ).let { mapper.map(it, TherapeuticLinkMessageDto::class.java) }
 }

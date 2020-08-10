@@ -123,7 +123,7 @@ class DmgServiceImpl(private val stsService: STSService) : DmgService {
             stsService.getSAMLToken(tokenId, keystoreId, passPhrase)
                 ?: throw MissingTokenException("Cannot obtain token for GMD operations")
         val keystore = stsService.getKeyStore(keystoreId, passPhrase)!!
-        val credential = KeyStoreCredential(keystoreId, keystore, "authentication", passPhrase)
+        val credential = KeyStoreCredential(keystoreId, keystore, "authentication", passPhrase, samlToken.quality)
 
         val isTest = config.getProperty("endpoint.mcn.registration").contains("-acpt")
 
@@ -196,14 +196,16 @@ class DmgServiceImpl(private val stsService: STSService) : DmgService {
             this.routing = SendRequestMapper.mapRouting(Routing(careReceiver, DateTime()))
             this.detail = SendRequestMapper.mapBlobToBlobType(blob)
 
-            this.xades = BlobUtil.generateXades(this.detail, credential, "mcn.registration")
+            this.xades = BlobUtil.generateXades(credential, this.detail, "mcn.registration")
         }
 
+        val start = System.currentTimeMillis()
         val xmlResponse = org.taktik.connector.technical.ws.ServiceFactory.getGenericWsSender().send(
             org.taktik.connector.business.registration.service.ServiceFactory.getRegistrationService(samlToken).apply {
                 setPayload(mcRequest)
                 setSoapAction("urn:be:fgov:ehealth:mycarenet:registration:protocol:v1:RegisterToMycarenetService")
             })
+        val stop = System.currentTimeMillis()
 
         val intermediateResponse = try {
             xmlResponse.asObject(RegisterToMycarenetServiceResponse::class.java)
@@ -211,6 +213,7 @@ class DmgServiceImpl(private val stsService: STSService) : DmgService {
             RegisterToMycarenetServiceResponse()
         }
 
+        intermediateResponse.upstreamTiming = (stop - start).toInt()
         intermediateResponse.soapRequest = xmlResponse.request
         intermediateResponse.soapResponse = xmlResponse.soapMessage
 
@@ -462,7 +465,7 @@ class DmgServiceImpl(private val stsService: STSService) : DmgService {
             stsService.getSAMLToken(tokenId, keystoreId, passPhrase)
                 ?: throw MissingTokenException("Cannot obtain token for GMD operations")
         val keystore = stsService.getKeyStore(keystoreId, passPhrase)!!
-        val credential = KeyStoreCredential(keystoreId, keystore, "authentication", passPhrase)
+        val credential = KeyStoreCredential(keystoreId, keystore, "authentication", passPhrase, samlToken.quality)
 
         // DMGReferences ref = DmgTestUtils.createDmgReferenceForTest();
         val ref = DMGReferences(true)
@@ -665,7 +668,7 @@ class DmgServiceImpl(private val stsService: STSService) : DmgService {
             stsService.getSAMLToken(tokenId, keystoreId, passPhrase)
                 ?: throw MissingTokenException("Cannot obtain token for DMG operations")
         val keystore = stsService.getKeyStore(keystoreId, passPhrase)!!
-        val credential = KeyStoreCredential(keystoreId, keystore, "authentication", passPhrase)
+        val credential = KeyStoreCredential(keystoreId, keystore, "authentication", passPhrase, samlToken.quality)
 
         val ref = DMGReferences(true)
 
@@ -747,7 +750,10 @@ class DmgServiceImpl(private val stsService: STSService) : DmgService {
         return try {
             val response = ResponseObjectBuilderFactory.getResponseObjectBuilder()
                 .handleSendResponseType(xmlResponse.asObject(
-                    NotifyGlobalMedicalFileResponse::class.java).apply { replyValidator.validateReplyStatus(this) })
+                    NotifyGlobalMedicalFileResponse::class.java).apply {
+                    replyValidator.validateReplyStatus(this)
+                })
+
 
             DmgConsultation(response.sendTransactionResponse.acknowledge.isIscomplete).apply {
                 this.errors.addAll(response.sendTransactionResponse.acknowledge.errors?.filterNotNull()?.flatMap { et ->

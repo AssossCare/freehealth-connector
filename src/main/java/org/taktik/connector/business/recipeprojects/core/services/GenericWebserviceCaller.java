@@ -49,6 +49,21 @@ public abstract class GenericWebserviceCaller {
         return callGenericWebservice(samlToken, credential, genericWebserviceRequest, responseType);
     }
 
+    public static <T> T callGenericWebservice(SAMLToken samlToken, Credential credential, Object request, Class<T> responseType, String endpointName, String serviceName, boolean addLoggingHandler, boolean addSoapFaultHandler, boolean addMustUnderstandHandler, boolean addInsurabilityHandler, String soapAction) throws IntegrationModuleException, TechnicalConnectorException {
+        GenericWebserviceRequest genericWebserviceRequest = new GenericWebserviceRequest();
+        genericWebserviceRequest.setRequest(request);
+        genericWebserviceRequest.setRequestType(request.getClass());
+        genericWebserviceRequest.setEndpoint(endpointName);
+        genericWebserviceRequest.setServiceName(serviceName);
+        genericWebserviceRequest.setAddLoggingHandler(addLoggingHandler);
+        genericWebserviceRequest.setAddSoapFaultHandler(addSoapFaultHandler);
+        genericWebserviceRequest.setAddMustUnderstandHandler(addMustUnderstandHandler);
+        genericWebserviceRequest.setAddInsurabilityHandler(addInsurabilityHandler);
+        genericWebserviceRequest.setSoapAction(soapAction);
+        return callGenericWebservice(samlToken, credential, genericWebserviceRequest, responseType);
+    }
+
+
     public static <T extends Object> T callGenericWebservice(SAMLToken samlToken, Credential credential, GenericWebserviceRequest genericWebserviceRequest, Class<T> responseType) throws IntegrationModuleException, TechnicalConnectorException {
         Validate.notNull(genericWebserviceRequest, "genericWebserviceRequest must be specified");
         Validate.notNull(genericWebserviceRequest.getRequest(), "request must be specified");
@@ -67,7 +82,7 @@ public abstract class GenericWebserviceCaller {
             GenericRequest genericRequest = new GenericRequest();
             genericRequest.setPayload(payload);
             genericRequest.setEndpoint(genericWebserviceRequest.getEndpoint());
-
+            genericRequest.setSoapAction(genericWebserviceRequest.getSoapAction());
 
             final HandlerChain handlerChain = new HandlerChain();
             if (genericWebserviceRequest.isAddLoggingHandler()) {
@@ -91,7 +106,7 @@ public abstract class GenericWebserviceCaller {
                 handlerChain.register(HandlerPosition.AFTER, new InsurabilityHandler());
             }
 
-            genericRequest.setHandlerChain(handlerChain);
+            genericRequest.addHandlerChain(handlerChain);
 
             final GenericResponse resp;
 

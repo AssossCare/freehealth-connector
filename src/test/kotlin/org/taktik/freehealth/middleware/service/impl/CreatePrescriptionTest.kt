@@ -22,7 +22,6 @@ import org.taktik.icure.be.ehealth.logic.recipe.impl.RecipeTestUtils.Medications
 import org.taktik.icure.be.ehealth.logic.recipe.impl.RecipeTestUtils.Medications.Companion.substanceProductP1
 import java.io.ByteArrayOutputStream
 import java.time.LocalDateTime
-import java.util.Date
 import java.util.UUID
 import javax.xml.bind.JAXBContext
 
@@ -58,7 +57,7 @@ class CreatePrescriptionTest {
     fun setup() {
         hcp = RecipeTestUtils.createHealthcareParty()
         keystoreId = stsService.uploadKeystore((MyTestsConfiguration::class).java.getResource("$ssin.acc-p12").readBytes())
-        tokenId = stsService.requestToken(keystoreId!!, ssin!!, passPhrase!!, false)?.tokenId
+        tokenId = stsService.requestToken(keystoreId!!, ssin!!, passPhrase!!)?.tokenId
     }
 
 
@@ -88,7 +87,6 @@ class CreatePrescriptionTest {
     }
 
     fun testCreatePrescription(medication: Medication) {
-        assertKmehrValid(medication)
         val infos = createTestPrescription(listOf(medication))
         Assert.assertTrue(infos.rid.trim() != "")
     }
@@ -102,11 +100,4 @@ class CreatePrescriptionTest {
         return infos
     }
 
-    fun assertKmehrValid(medication: Medication) {
-        val os = ByteArrayOutputStream()
-        JAXBContext.newInstance(org.taktik.connector.business.domain.kmehr.v20161201.be.fgov.ehealth.standards.kmehr.schema.v1.Kmehrmessage::class.java).createMarshaller().marshal(recipeService.getKmehrPrescription(patient, hcp, listOf(medication), null), os)
-        val prescription = os.toByteArray()
-        validator.validatePrescription(prescription, recipeService.inferPrescriptionType(listOf(medication), null))
-
-    }
 }

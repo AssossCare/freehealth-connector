@@ -47,15 +47,24 @@ class EfactController(val efactService: EfactService, val mapper: MapperFacade) 
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     @ExceptionHandler(MissingTokenException::class)
     @ResponseBody
+    fun handleUnauthorizedRequest(req: HttpServletRequest, ex: Exception): String = ex.message ?: "unknown reason"
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(IllegalArgumentException::class)
+    @ResponseBody
     fun handleBadRequest(req: HttpServletRequest, ex: Exception): String = ex.message ?: "unknown reason"
 
+    @ResponseStatus(HttpStatus.BAD_GATEWAY)
+    @ExceptionHandler(javax.xml.ws.soap.SOAPFaultException::class)
+    @ResponseBody
+    fun handleBadRequest(req: HttpServletRequest, ex: javax.xml.ws.soap.SOAPFaultException): String = ex.message ?: "unknown reason"
 
     @PostMapping("/batch", produces = [MediaType.APPLICATION_JSON_UTF8_VALUE])
     fun sendBatch(
         @RequestHeader(name = "X-FHC-keystoreId") keystoreId: UUID,
         @RequestHeader(name = "X-FHC-tokenId") tokenId: UUID,
         @RequestHeader(name = "X-FHC-passPhrase") passPhrase: String,
-        @RequestParam(required = false) isGuardPost: Boolean?,
+        @RequestParam(required = false) hcpQuality: String,
         @RequestBody batch: InvoicesBatch
                  ) =
         efactService.sendBatch(
@@ -63,7 +72,7 @@ class EfactController(val efactService: EfactService, val mapper: MapperFacade) 
             tokenId = tokenId,
             passPhrase = passPhrase,
             batch = batch,
-            isGuardPost = isGuardPost ?: false
+            hcpQuality = hcpQuality
         )
 
     @PostMapping("/flat", produces = [MediaType.TEXT_PLAIN_VALUE])
@@ -102,9 +111,9 @@ class EfactController(val efactService: EfactService, val mapper: MapperFacade) 
         @RequestHeader(name = "X-FHC-passPhrase") passPhrase: String,
         @RequestParam ssin: String,
         @RequestParam firstName: String,
-        @RequestParam lastName: String,
-        @RequestParam limit: Int?,
-        @RequestParam isGuardPost: Boolean?
+        @RequestParam lastName: String?,
+        @RequestParam hcpQuality: String,
+        @RequestParam limit: Int?
                     ) =
         efactService.loadMessages(
             keystoreId = keystoreId,
@@ -116,7 +125,7 @@ class EfactController(val efactService: EfactService, val mapper: MapperFacade) 
             hcpLastName = lastName,
             language = language,
             limit = limit ?: Integer.MAX_VALUE,
-            isGuardPost = isGuardPost ?: false
+            hcpQuality = hcpQuality
                                  )
 
     @PutMapping("/confirm/acks/{nihii}", produces = [MediaType.APPLICATION_JSON_UTF8_VALUE])
@@ -128,7 +137,7 @@ class EfactController(val efactService: EfactService, val mapper: MapperFacade) 
         @RequestParam ssin: String,
         @RequestParam firstName: String,
         @RequestParam lastName: String,
-        @RequestParam(required = false) isGuardPost: Boolean?,
+        @RequestParam hcpQuality: String,
         @RequestBody valueHashes: List<String>
                ) =
         efactService.confirmAcks(
@@ -140,7 +149,7 @@ class EfactController(val efactService: EfactService, val mapper: MapperFacade) 
             hcpFirstName = firstName,
             hcpLastName = lastName,
             valueHashes = valueHashes,
-            isGuardPost = isGuardPost ?: false
+            hcpQuality = hcpQuality
         )
 
     @PutMapping("/confirm/msgs/{nihii}", produces = [MediaType.APPLICATION_JSON_UTF8_VALUE])
@@ -152,7 +161,7 @@ class EfactController(val efactService: EfactService, val mapper: MapperFacade) 
         @RequestParam ssin: String,
         @RequestParam firstName: String,
         @RequestParam lastName: String,
-        @RequestParam(required = false) isGuardPost: Boolean?,
+        @RequestParam hcpQuality: String,
         @RequestBody valueHashes: List<String>
     ) =
         efactService.confirmMessages(
@@ -164,6 +173,6 @@ class EfactController(val efactService: EfactService, val mapper: MapperFacade) 
             hcpFirstName = firstName,
             hcpLastName = lastName,
             valueHashes = valueHashes,
-            isGuardPost = isGuardPost ?: false
+            hcpQuality = hcpQuality
         )
 }

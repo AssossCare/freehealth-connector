@@ -34,6 +34,7 @@ import org.springframework.web.bind.annotation.RestController
 import org.taktik.freehealth.middleware.dto.genins.InsurabilityInfoDto
 import org.taktik.freehealth.middleware.exception.MissingTokenException
 import org.taktik.freehealth.middleware.service.GenInsService
+import java.time.Instant
 import java.util.*
 import javax.servlet.http.HttpServletRequest
 
@@ -43,7 +44,17 @@ class GenInsController(val genInsService: GenInsService) {
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     @ExceptionHandler(MissingTokenException::class)
     @ResponseBody
+    fun handleUnauthorizedRequest(req: HttpServletRequest, ex: Exception): String = ex.message ?: "unknown reason"
+
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    @ExceptionHandler(IllegalArgumentException::class)
+    @ResponseBody
     fun handleBadRequest(req: HttpServletRequest, ex: Exception): String = ex.message ?: "unknown reason"
+
+    @ResponseStatus(HttpStatus.BAD_GATEWAY)
+    @ExceptionHandler(javax.xml.ws.soap.SOAPFaultException::class)
+    @ResponseBody
+    fun handleBadRequest(req: HttpServletRequest, ex: javax.xml.ws.soap.SOAPFaultException): String = ex.message ?: "unknown reason"
 
     @GetMapping("/{ssin}", produces = [MediaType.APPLICATION_JSON_UTF8_VALUE])
     fun getGeneralInsurability(
@@ -59,7 +70,7 @@ class GenInsController(val genInsService: GenInsService) {
         @RequestParam(required = false) endDate: Long?,
         @RequestParam(required = false) hospitalized: Boolean?
     ): InsurabilityInfoDto {
-        val startDate: Date = date?.let { Date(date) } ?: Date()
+        val startDate: Instant = date?.let { Instant.ofEpochMilli(it) } ?: Instant.now()
         return genInsService.getGeneralInsurabity(keystoreId = keystoreId,
                                                   tokenId = tokenId,
                                                   hcpQuality = hcpQuality ?: "doctor",
@@ -71,7 +82,7 @@ class GenInsController(val genInsService: GenInsService) {
                                                   io = null,
                                                   ioMembership = null,
                                                   startDate = startDate,
-                                                  endDate = endDate?.let { Date(it) } ?: startDate,
+                                                  endDate = endDate?.let { Instant.ofEpochMilli(it) } ?: startDate,
                                                   hospitalized = hospitalized ?: false)
     }
 
@@ -90,7 +101,7 @@ class GenInsController(val genInsService: GenInsService) {
         @RequestParam(required = false) endDate: Long?,
         @RequestParam(required = false) hospitalized: Boolean?
     ): InsurabilityInfoDto {
-        val startDate: Date = date?.let { Date(date) } ?: Date()
+        val startDate: Instant = date?.let { Instant.ofEpochMilli(it) } ?: Instant.now()
         return genInsService.getGeneralInsurabity(keystoreId = keystoreId,
                                                   tokenId = tokenId,
                                                   hcpQuality = hcpQuality ?: "doctor",
@@ -102,7 +113,7 @@ class GenInsController(val genInsService: GenInsService) {
                                                   io = io,
                                                   ioMembership = ioMembership,
                                                   startDate = startDate,
-                                                  endDate = endDate?.let { Date(it) } ?: startDate,
+                                                  endDate = endDate?.let { Instant.ofEpochMilli(it) } ?: startDate,
                                                   hospitalized = hospitalized ?: false)
     }
 }
