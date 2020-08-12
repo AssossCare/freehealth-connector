@@ -92,7 +92,8 @@ class EfactController(val efactService: EfactService, val mapper: MapperFacade) 
         @RequestParam firstName: String,
         @RequestParam lastName: String?,
         @RequestParam hcpQuality: String,
-        @RequestParam limit: Int?
+        @RequestParam limit: Int?,
+        @RequestParam(required = false) isGuardPost: Boolean?
                     ) =
         efactService.loadMessages(
             keystoreId = keystoreId,
@@ -104,8 +105,8 @@ class EfactController(val efactService: EfactService, val mapper: MapperFacade) 
             hcpLastName = lastName,
             language = language,
             limit = limit ?: Integer.MAX_VALUE,
-            hcpQuality = hcpQuality
-                                 )
+            hcpQuality = if(isGuardPost == true){ "guardpost" }else{ hcpQuality }
+        )
 
     @PutMapping("/confirm/acks/{nihii}", produces = [MediaType.APPLICATION_JSON_UTF8_VALUE])
     fun confirmAcks(
@@ -117,7 +118,8 @@ class EfactController(val efactService: EfactService, val mapper: MapperFacade) 
         @RequestParam firstName: String,
         @RequestParam lastName: String,
         @RequestParam hcpQuality: String,
-        @RequestBody valueHashes: List<String>
+        @RequestBody valueHashes: List<String>,
+        @RequestParam(required = false) isGuardPost: Boolean?
                ) =
         efactService.confirmAcks(
             keystoreId = keystoreId,
@@ -128,7 +130,7 @@ class EfactController(val efactService: EfactService, val mapper: MapperFacade) 
             hcpFirstName = firstName,
             hcpLastName = lastName,
             valueHashes = valueHashes,
-            hcpQuality = hcpQuality
+            hcpQuality = if(isGuardPost == true){ "guardpost" }else{ hcpQuality }
         )
 
     @PutMapping("/confirm/msgs/{nihii}", produces = [MediaType.APPLICATION_JSON_UTF8_VALUE])
@@ -141,7 +143,8 @@ class EfactController(val efactService: EfactService, val mapper: MapperFacade) 
         @RequestParam firstName: String,
         @RequestParam lastName: String,
         @RequestParam hcpQuality: String,
-        @RequestBody valueHashes: List<String>
+        @RequestBody valueHashes: List<String>,
+        @RequestParam(required = false) isGuardPost: Boolean?
     ) =
         efactService.confirmMessages(
             keystoreId = keystoreId,
@@ -152,6 +155,6 @@ class EfactController(val efactService: EfactService, val mapper: MapperFacade) 
             hcpFirstName = firstName,
             hcpLastName = lastName,
             valueHashes = valueHashes,
-            hcpQuality = hcpQuality
+            hcpQuality = if(isGuardPost == true){ "guardpost" }else{ hcpQuality }
         )
 }
