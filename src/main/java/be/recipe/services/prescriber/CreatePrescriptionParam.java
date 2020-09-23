@@ -9,7 +9,7 @@ import javax.xml.bind.annotation.XmlType;
 @XmlAccessorType(XmlAccessType.FIELD)
 @XmlType(
    name = "createPrescriptionParam",
-   propOrder = {"prescription", "prescriptionType", "feedbackRequested", "keyId", "symmKey", "prescriberLabel", "expirationDate", "vision"}
+   propOrder = {"prescription", "prescriptionType", "feedbackRequested", "keyId", "symmKey", "prescriberLabel", "expirationDate", "vision", "prescriberId"}
 )
 @XmlRootElement(
    name = "createPrescriptionParam"
@@ -43,6 +43,10 @@ public class CreatePrescriptionParam extends PartyIdentification {
    @XmlElement(
       required = true
    )
+
+   protected String prescriberId;
+   @XmlElement(required = true)
+
    protected String vision;
 
    public byte[] getPrescription() {
@@ -109,4 +113,11 @@ public class CreatePrescriptionParam extends PartyIdentification {
       this.vision = value;
    }
 
+   public String getPrescriberId() {
+      return prescriberId;
+   }
+
+   public void setPrescriberId(String prescriberId) {
+      this.prescriberId = prescriberId;
+   }
 }
