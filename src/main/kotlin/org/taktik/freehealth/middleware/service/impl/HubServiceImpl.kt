@@ -288,7 +288,9 @@ class HubServiceImpl(private val stsService: STSService, private val keyDepotSer
         patientSsin: String,
         patientEidCardNumber: String?,
         patientIsiCardNumber: String?,
-        hubPackageId: String?
+        hubPackageId: String?,
+        from: Long?,
+        to: Long?
     ): PutTherapeuticLinkResponse {
         val samlToken =
             stsService.getSAMLToken(tokenId, keystoreId, passPhrase)
@@ -329,6 +331,8 @@ class HubServiceImpl(private val stsService: STSService, private val keyDepotSer
                                 })
                             }
                         }
+                        from?.let { startdate = DateTime(it) }
+                        to?.let { enddate = DateTime(it) }
                     }
                 })
     }
@@ -405,8 +409,8 @@ class HubServiceImpl(private val stsService: STSService, private val keyDepotSer
         hcpZip: String,
         patientSsin: String,
         therLinkType: String?,
-        from: Instant?,
-        to: Instant?,
+        from: Long?,
+        to: Long?,
         hubPackageId: String?
     ): TherapeuticLinkMessage {
         val samlToken =
@@ -439,8 +443,8 @@ class HubServiceImpl(private val stsService: STSService, private val keyDepotSer
                             })
                         })
                         // We have to disable dates due to a bug in RSW
-                        // begindate = from?.let { DateTime(it.toEpochMilli()) } ?: DateTime.now()
-                        // enddate = from?.let { DateTime(it.toEpochMilli()) } ?: DateTime.now()
+                        // begindate = from?.let { DateTime(it) } ?: DateTime.now()
+                        // enddate = from?.let { DateTime(it) } ?: DateTime.now()
                     }
                 })
         val errors = therapeuticLinkResponse.acknowledge.errors.map {
@@ -613,7 +617,7 @@ class HubServiceImpl(private val stsService: STSService, private val keyDepotSer
                 stsService.getKeyStore(keystoreId, passPhrase)!!,
                 passPhrase,
                 GetTransactionRequest().apply {
-                    request = createRequestListType(hcpLastName, hcpFirstName, hcpNihii, hcpSsin, hcpZip, hubPackageId, breakTheGlassReason, true)
+                    request = createRequestType(hcpLastName, hcpFirstName, hcpNihii, hcpSsin, hcpZip, hubPackageId, breakTheGlassReason, true)
                     select = SelectGetTransactionType().apply {
                         patient =
                             PatientIdType().apply {
@@ -790,8 +794,8 @@ class HubServiceImpl(private val stsService: STSService, private val keyDepotSer
                             }
                         transaction = TransactionWithPeriodType().apply {
                             if(isGlobal) { searchtype = LocalSearchType.GLOBAL }
-                            from?.let { begindate = DateTime(from) }
-                            to?.let { enddate = DateTime(to) }
+                            from?.let { begindate = DateTime(it) }
+                            to?.let { enddate = DateTime(it) }
                             if (!StringUtils.isEmpty(authorNihii) || !StringUtils.isEmpty(authorSsin)) {
                                 author = AuthorType().apply {
                                     hcparties.add(HcpartyType().apply {
@@ -845,7 +849,9 @@ class HubServiceImpl(private val stsService: STSService, private val keyDepotSer
         breakTheGlassReason: String?,
         sv: String,
         sl: String,
-        value: String
+        value: String,
+        externalHubId: String?,
+        externalHubName: String?
     ): Kmehrmessage? {
         val samlToken =
             stsService.getSAMLToken(tokenId, keystoreId, passPhrase)
@@ -873,6 +879,26 @@ class HubServiceImpl(private val stsService: STSService, private val keyDepotSer
                                     this.s = IDKMEHRschemes.LOCAL; this.sv = sv; this.sl =
                                     sl; this.value = value
                                 }
+                            
+                            if(StringUtils.isNotEmpty(externalHubId)) {
+                                author = AuthorType().apply {
+                                    hcparties.add(HcpartyType().apply {
+                                        ids.add(IDHCPARTY().apply {
+                                            this.s = IDHCPARTYschemes.ID_HCPARTY
+                                            this.sv = "1.0"
+                                            this.value = externalHubId
+                                        })
+                                        cds.add(CDHCPARTY().apply {
+                                            this.s = CDHCPARTYschemes.CD_HCPARTY
+                                            this.sv = "1.1"
+                                            this.value = "hub"
+                                        })
+                                        if(StringUtils.isNotEmpty(externalHubName)){
+                                            name = externalHubName
+                                        }
+                                    })
+                                }
+                            }
                         }
                     }
                 })
@@ -977,6 +1003,68 @@ class HubServiceImpl(private val stsService: STSService, private val keyDepotSer
         }
     }
 
+    private fun createRequestType(
+        hcpLastName: String,
+        hcpFirstName: String,
+        hcpNihii: String,
+        hcpSsin: String,
+        hcpZip: String,
+        hubPackageId: String?,
+        breakTheGlassReason: String?,
+        encrypted: Boolean = false
+                                     ): RequestType {
+        require(breakTheGlassReason == null || breakTheGlassReason.length in 10..200) { "Invalid break the glass reason" }
+        return RequestType().apply {
+            date = DateTime.now()
+            time = DateTime.now()
+            id =
+                IDKMEHR().apply {
+                    s = IDKMEHRschemes.ID_KMEHR; sv = "1.0"; value =
+                    "$hcpNihii.${Instant.now().toEpochMilli()}"
+                }
+            author = AuthorType().apply {
+                hcparties.add(HcpartyType().apply {
+                    ids.add(IDHCPARTY().apply { s = IDHCPARTYschemes.ID_HCPARTY; sv = "1.0"; value = hcpNihii })
+                    ids.add(IDHCPARTY().apply { s = IDHCPARTYschemes.INSS; sv = "1.0"; value = hcpSsin })
+                    cds.add(CDHCPARTY().apply { s = CDHCPARTYschemes.CD_HCPARTY; sv = "1.1"; value = "persphysician" })
+
+                    if (encrypted) {
+                        ids.add(IDHCPARTY().apply {
+                            s = IDHCPARTYschemes.ID_ENCRYPTION_ACTOR; sv = "1.0"; value =
+                            hcpNihii.substring(0, 8)
+                        })
+                        cds.add(CDHCPARTY().apply {
+                            s = CDHCPARTYschemes.CD_ENCRYPTION_ACTOR; sv = "1.1"; value =
+                            IdentifierType.NIHII.getType(48)
+                        })
+                    }
+                    firstname = hcpFirstName
+                    familyname = hcpLastName
+                    addresses.add(AddressType().apply {
+                        cds.add(CDADDRESS().apply { s = CDADDRESSschemes.CD_ADDRESS; sv = "1.1"; value = "work" })
+                        country =
+                            CountryType().apply {
+                                cd =
+                                    CDCOUNTRY().apply { s = CDCOUNTRYschemes.CD_FED_COUNTRY; sv = "1.2"; value = "be" }
+                            }
+                        zip = hcpZip
+                        nis = nisCodesPerZip[hcpZip]
+                    })
+                })
+                if(StringUtils.isNotEmpty(hubPackageId ?: config.getProperty("hub.package.id") ?: "ACC_")) {
+                    hcparties.add(HcpartyType().apply {
+                        ids.add(IDHCPARTY().apply {
+                            s = IDHCPARTYschemes.LOCAL; sl = "endusersoftwareinfo"; sv =
+                            "1.0"; value = hubPackageId ?: config.getProperty("hub.package.id") ?: "ACC_"
+                        })
+                        cds.add(CDHCPARTY().apply { s = CDHCPARTYschemes.CD_HCPARTY; sv = "1.1"; value = "application" })
+                    })
+                }
+            }
+            breakTheGlassReason?.let { breaktheglass = it }
+        }
+    }
+
     override fun getPatientAuditTrail(
         endpoint: String,
         keystoreId: UUID,
@@ -1010,8 +1098,8 @@ class HubServiceImpl(private val stsService: STSService, private val keyDepotSer
             GetPatientAuditTrailRequest().apply{
                 request = createRequestListType(hcpLastName, hcpFirstName, hcpNihii, hcpSsin, hcpZip, hubPackageId, null, true)
                 select = SelectGetPatientAuditTrailType().apply {
-                    from?.let {begindate = DateTime(from) }
-                    to?.let { enddate = DateTime(to) }
+                    from?.let { begindate = DateTime(it) }
+                    to?.let { enddate = DateTime(it) }
                     ssin?.let{ patient =
                         PatientIdType().apply {
                             ids.add(IDPATIENT().apply {

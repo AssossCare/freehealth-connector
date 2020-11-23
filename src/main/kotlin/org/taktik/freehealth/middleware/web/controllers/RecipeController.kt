@@ -84,6 +84,11 @@ class RecipeController(val recipeService: RecipeService, val recipeV4Service: Re
             samVersion = prescription.samVersion,
             deliveryDate = prescription.deliveryDate?.let {FuzzyValues.getLocalDateTime(it)},
             expirationDate = prescription.expirationDate?.let {FuzzyValues.getLocalDateTime(it)},
+            vendorName = prescription.vendorName,
+            packageName = prescription.packageName,
+            packageVersion = prescription.packageVersion,
+            vendorEmail = prescription.vendorEmail,
+            vendorPhone = prescription.vendorPhone,
             vision = prescription.vision
                                         )
 
@@ -121,10 +126,10 @@ class RecipeController(val recipeService: RecipeService, val recipeV4Service: Re
         @RequestParam hcpSsin: String,
         @RequestParam hcpName: String,
         @RequestHeader(name = "X-FHC-passPhrase") passPhrase: String,
-        patientId: String,
-        executorId: String,
+        @RequestParam patientId: String,
+        @RequestParam executorId: String,
         @PathVariable rid: String,
-        text: String
+        @RequestParam text: String
     ) = recipeService.sendNotification(
         keystoreId = keystoreId,
         tokenId = tokenId,

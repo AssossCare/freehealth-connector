@@ -38,5 +38,5 @@ open class Prescription(
     var isFeedbackAllowed: Boolean = false,
     var patientId: String? = null,
     var notificationWasSent: Boolean? = null,
-    var xmlRequest: String? = null
+    var requestXml: String? = null
 ) : Serializable

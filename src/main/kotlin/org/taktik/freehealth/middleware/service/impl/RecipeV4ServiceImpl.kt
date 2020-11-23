@@ -73,7 +73,6 @@ import org.taktik.freehealth.middleware.service.STSService
 import org.taktik.freehealth.utils.FuzzyValues
 import org.taktik.icure.be.ehealth.logic.recipe.impl.KmehrPrescriptionConfig
 import org.taktik.connector.business.recipe.utils.KmehrPrescriptionHelper
-import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.math.BigDecimal
 import java.math.BigInteger
@@ -99,6 +98,7 @@ import org.taktik.connector.business.domain.kmehr.v20190301.be.fgov.ehealth.stan
 import org.taktik.connector.business.domain.kmehr.v20190301.makeDateTypeFromFuzzyLong
 import org.taktik.connector.business.domain.kmehr.v20190301.makeXGC
 import org.taktik.connector.business.domain.kmehr.v20190301.makeXMLGregorianCalendarFromFuzzyLong
+import org.taktik.connector.business.domain.kmehr.v20190301.makeXmlGregorianCalendar
 import org.taktik.connector.business.domain.kmehr.v20190301.s
 import org.taktik.connector.business.recipe.utils.KmehrPrescriptionHelperV4
 import org.taktik.connector.business.recipe.utils.KmehrPrescriptionHelperV4.mapPeriodToFrequency
@@ -135,6 +135,11 @@ class RecipeV4ServiceImpl(private val codeDao: CodeDao, private val stsService: 
         executorId: String?,
         samVersion: String?,
         deliveryDate: LocalDateTime?,
+        vendorName: String?,
+        packageName: String?,
+        packageVersion: String?,
+        vendorEmail: String?,
+        vendorPhone: String?,
         vision: String?,
         expirationDate: LocalDateTime?): Prescription {
         val samlToken = stsService.getSAMLToken(tokenId, keystoreId, passPhrase) ?: throw IllegalArgumentException("Cannot obtain token for Recipe operations")
@@ -143,7 +148,7 @@ class RecipeV4ServiceImpl(private val codeDao: CodeDao, private val stsService: 
         val credential = KeyStoreCredential(keystoreId, keystore, "authentication", passPhrase, samlToken.quality)
         val selectedType: String = inferPrescriptionType(medications, prescriptionType)
 
-        val m = getKmehrPrescription(patient, hcp, medications, samVersion, deliveryDate, expirationDate, hcpQuality)
+        val m = getKmehrPrescription(patient, hcp, medications, samVersion, deliveryDate, hcpQuality, vendorName ?: "phyMedispringTopaz/1.0-freehealth-connector", packageName, packageVersion, vendorEmail, vendorPhone, expirationDate)
 
         val os = ByteArrayOutputStream()
         JAXBContext.newInstance(Kmehrmessage::class.java).createMarshaller().marshal(m, os)
@@ -158,14 +163,30 @@ class RecipeV4ServiceImpl(private val codeDao: CodeDao, private val stsService: 
             throw e
         }
 
-        val prescriptionId = service.createPrescription(keystore, samlToken, passPhrase, credential, hcpNihii, feedback, patient.ssin!!, prescription, selectedType, vision, expirationDate ?: LocalDateTime.now().plusMonths(3))
+        val unconstrainedDate = expirationDate ?: deliveryDate?.plusMonths(3)?.minusDays(1) ?: LocalDateTime.now().plusMonths(3).minusDays(1)
+        val limitDate =  LocalDateTime.now().plusYears(1).minusDays(1)
 
-        val result = Prescription(Date(), "", prescriptionId!!, false,  null, false, ConnectorXmlUtils.toString(m))
+        val prescriptionId = service.createPrescription(keystore, samlToken, passPhrase, credential, hcpNihii, feedback, patient.ssin!!, prescription, selectedType, vision, vendorName ?: "phyMedispringTopaz", packageName, packageVersion ?: "1.0-freehealth-connector", if (unconstrainedDate.isAfter(limitDate)) limitDate else unconstrainedDate)
+
+        val result = Prescription(Date(), "", prescriptionId!!, false, null, false, ConnectorXmlUtils.toString(m))
 
         return result
     }
 
-    fun getKmehrPrescription(patient: Patient, hcp: HealthcareParty, medications: List<Medication>, samVersion: String?, deliveryDate: LocalDateTime?, expirationDate: LocalDateTime?, hcpQuality: String): Kmehrmessage {
+    fun getKmehrPrescription(
+        patient: Patient,
+        hcp: HealthcareParty,
+        medications: List<Medication>,
+        samVersion: String?,
+        deliveryDate: LocalDateTime?,
+        hcpQuality: String,
+        vendorName: String?,
+        packageName: String?,
+        packageVersion: String?,
+        vendorEmail: String?,
+        vendorPhone: String?,
+        expirationDate: LocalDateTime?
+                            ): Kmehrmessage {
         val config = KmehrPrescriptionConfig().apply {
             prescription.apply {
                 inami = hcp.nihii!!.replace("[^0-9]".toRegex(), "")
@@ -182,16 +203,16 @@ class RecipeV4ServiceImpl(private val codeDao: CodeDao, private val stsService: 
                 messageId = "${prescription.inami}-${hcp.ssin}-$_idKhmerId"
                 this.samVersion = samVersion
             }
-            iCure.apply {
-                name = icureName
-                version = icureVersion
+            softwarePackage.apply {
+                name = packageName
+                version = packageVersion
                 id = name + "-" + version
-                prettyName = icureName
-                phone = "+3223335840"
-                mail = "support@icure.eu"
+                this.vendorName = vendorName
+                phone = vendorPhone
+                mail = vendorEmail
             }
         }
-        return getKmehrPrescription(patient, hcp, medications, deliveryDate, expirationDate, config, hcpQuality)
+        return getKmehrPrescription(patient, hcp, medications, deliveryDate, config, hcpQuality, expirationDate)
     }
 
     fun inferPrescriptionType(medications: List<Medication>, prescriptionType: String?): String {
@@ -238,7 +259,8 @@ class RecipeV4ServiceImpl(private val codeDao: CodeDao, private val stsService: 
         return false
     }
 
-    fun getKmehrPrescription(patient: Patient, hcp: HealthcareParty, medications: List<Medication>, deliveryDate: LocalDateTime?, expirationDate: LocalDateTime?, config: KmehrPrescriptionConfig, hcpQuality: String): Kmehrmessage {
+    fun getKmehrPrescription(patient: Patient, hcp: HealthcareParty, medications: List<Medication>, deliveryDate: LocalDateTime?, config: KmehrPrescriptionConfig, hcpQuality: String,
+        expirationDate: LocalDateTime?): Kmehrmessage {
 
         val language = config.prescription.language
         return Kmehrmessage().apply {
@@ -259,8 +281,8 @@ class RecipeV4ServiceImpl(private val codeDao: CodeDao, private val stsService: 
                     },
                     IDKMEHR().apply {
                         s = IDKMEHRschemes.LOCAL
-                        sl = config.iCure.name
-                        sv = config.iCure.version
+                        sl = config.softwarePackage.name
+                        sv = config.softwarePackage.version
                         value = config.header.messageId
                     }
                                  ))
@@ -274,21 +296,21 @@ class RecipeV4ServiceImpl(private val codeDao: CodeDao, private val stsService: 
                         },
                         HcpartyType().apply {
                             cds.add(CDHCPARTY().apply { s(CDHCPARTYschemes.CD_HCPARTY); value = "application" })
-                            name = config.iCure.prettyName
+                            name = config.softwarePackage.vendorName
                             telecoms.addAll(listOf(
                                 TelecomType().apply {
                                     cds.addAll(listOf(
                                         CDTELECOM().apply { s(CDTELECOMschemes.CD_ADDRESS); value = "work" },
                                         CDTELECOM().apply { s(CDTELECOMschemes.CD_TELECOM); value = "phone" }
                                                      ))
-                                    telecomnumber = config.iCure.phone
+                                    telecomnumber = config.softwarePackage.phone
                                 },
                                 TelecomType().apply {
                                     cds.addAll(listOf(
                                         CDTELECOM().apply { s(CDTELECOMschemes.CD_ADDRESS); value = "work" },
                                         CDTELECOM().apply { s(CDTELECOMschemes.CD_TELECOM); value = "email" }
                                                      ))
-                                    telecomnumber = config.iCure.mail
+                                    telecomnumber = config.softwarePackage.mail
                                 }
                                                   ))
                         }
@@ -320,7 +342,7 @@ class RecipeV4ServiceImpl(private val codeDao: CodeDao, private val stsService: 
                     cds.add(CDTRANSACTION().apply { s(CDTRANSACTIONschemes.CD_TRANSACTION); value = "pharmaceuticalprescription" })
                     date = config.header.date
                     time = config.header.time
-                    // expirationDate?.let { expirationdate = makeXGC(expirationDate.time) } // deprecated as of Kmehr 1.18 - 20161201
+                    expirationDate?.let { expirationdate = makeXmlGregorianCalendar(expirationDate) }
                     author = AuthorType().apply {
                         hcparties.add(HcpartyType().apply {
                             ids.add(IDHCPARTY().apply { s =
@@ -352,7 +374,6 @@ class RecipeV4ServiceImpl(private val codeDao: CodeDao, private val stsService: 
                     }
                     isIscomplete = true
                     isIsvalidated = true
-                    expirationdate = expirationDate?.let {  makeXMLGregorianCalendarFromFuzzyLong(FuzzyValues.getFuzzyDate(it, ChronoUnit.DAYS))}
                     headingsAndItemsAndTexts.add(HeadingType().apply {
                         ids.add(IDKMEHR().apply { s = IDKMEHRschemes.ID_KMEHR; value = "1" })
                         cds.add(CDHEADING().apply { s = CDHEADINGschemes.CD_HEADING; value = "prescription" })
@@ -401,6 +422,7 @@ class RecipeV4ServiceImpl(private val codeDao: CodeDao, private val stsService: 
                                                 })
                                             })
                                         }
+
                                     }
                                 }
                                 if (contents.none { it.medicinalproduct != null || it.substanceproduct != null || it.compoundprescription != null}) {

@@ -122,7 +122,9 @@ interface HubService {
         patientSsin: String,
         patientEidCardNumber: String?,
         patientIsiCardNumber: String?,
-        hubPackageId: String?
+        hubPackageId: String?,
+        from: Long?,
+        to: Long?
     ): PutTherapeuticLinkResponse
 
     fun getTherapeuticLinks(
@@ -137,8 +139,8 @@ interface HubService {
         hcpZip: String,
         patientSsin: String,
         therLinkType: String?,
-        from: Instant?,
-        to: Instant?,
+        from: Long?,
+        to: Long?,
         hubPackageId: String?
     ): TherapeuticLinkMessage
 
@@ -249,7 +251,9 @@ interface HubService {
         breakTheGlassReason: String? = null,
         sv: String,
         sl: String,
-        value: String
+        value: String,
+        externalHubId: String? = null,
+        externalHubName: String? = null
     ): Kmehrmessage?
 
     fun getPatientAuditTrail(
