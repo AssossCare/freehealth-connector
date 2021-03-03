@@ -28,6 +28,8 @@ import be.recipe.services.prescriber.ListRidsHistoryParam
 import be.recipe.services.prescriber.ListRidsHistoryResult
 import be.recipe.services.prescriber.PutVisionParam
 import be.recipe.services.prescriber.PutVisionResult
+import be.recipe.services.prescriber.RevokePrescriptionParam
+import be.recipe.services.prescriber.RevokePrescriptionResult
 import be.recipe.services.prescriber.ValidationPropertiesParam
 import be.recipe.services.prescriber.ValidationPropertiesResult
 import com.sun.xml.internal.ws.client.ClientTransportException
@@ -173,38 +175,41 @@ class PrescriberIntegrationModuleV4Impl(stsService: STSService, keyDepotService:
     private fun generateRid(prescriptionType: String) =
         ("BE" + prescriptionType + "JNT" + RandomStringUtils.random(5, true, false).toUpperCase()).replace('I', 'J').replace('O', 'A').replace('U', 'V')
 
-    override fun getData(
-        keystore: KeyStore,
+    override fun getPrescriptionStatus(
         samlToken: SAMLToken,
-        passPhrase: String,
         credential: KeyStoreCredential,
-        param: GetPrescriptionStatusParam
-                        ): GetPrescriptionStatusResult? {
-        RidValidator.validateRid(param.rid)
+        nihii: String,
+        rid: String
+                             ): GetPrescriptionStatusResult? {
+        RidValidator.validateRid(rid)
+        val param = GetPrescriptionStatusParam()
+        param.rid = rid
+        param.prescriberId = nihii
+        param.symmKey = symmKey.encoded
+
         return try {
-            val getPrescriptionStatusRequest = getGetPrescriptionStatus(credential, param) ?: throw TechnicalConnectorException(TechnicalConnectorExceptionValues.ERROR_BUSINESS_CODE_REASON, "Unknown error in recipe")
+            val request = getGetPrescriptionStatus(credential, param) ?: throw TechnicalConnectorException(TechnicalConnectorExceptionValues.ERROR_BUSINESS_CODE_REASON, "Unknown error in recipe")
             try {
-                val response: GetPrescriptionStatusResponse? = recipePrescriberServiceV4.getPrescriptionStatus(samlToken, credential, getPrescriptionStatusRequest)
+                val response: GetPrescriptionStatusResponse? = recipePrescriberServiceV4.getPrescriptionStatus(samlToken, credential, request)
                 response?.let {
                     unsealGetPrescriptionStatusResponse(it).also {
                         checkStatus(it)
                     }
                 }
-            } catch (var8: ClientTransportException) {
-                throw IntegrationModuleException(I18nHelper.getLabel("error.connection.executor"), var8)
+            } catch (ex: ClientTransportException) {
+                throw IntegrationModuleException(I18nHelper.getLabel("error.connection.executor"), ex)
             }
-        } catch (var9: Throwable) {
-            Exceptionutils.errorHandler(var9)
+        } catch (err: Throwable) {
+            Exceptionutils.errorHandler(err)
             null
         }
     }
 
-    override fun getData(
-        keystore: KeyStore,
+    override fun listRidsHistory(
         samlToken: SAMLToken,
-        passPhrase: String,
         credential: KeyStoreCredential,
-        param: ListRidsHistoryParam): ListRidsHistoryResult? {
+        param: ListRidsHistoryParam
+                                ): ListRidsHistoryResult? {
         ValidationUtils.validatePatientId(param.patientId)
 
         return try {
@@ -563,6 +568,63 @@ class PrescriberIntegrationModuleV4Impl(stsService: STSService, keyDepotService:
             null
         }
     }
+
+
+
+    /**
+     * Cancel prescription.
+     *
+     *
+     *
+     *
+     * @param samlToken
+     * @param credential
+     * @param nihii
+     * @param rid    the rid
+     * @param reason the reason
+     * @throws IntegrationModuleException the integration module exception
+     */
+
+    @Throws(IntegrationModuleException::class)
+    override fun revokePrescription(samlToken: SAMLToken, credential: KeyStoreCredential, nihii: String, rid: String, reason: String) {
+        validateRid(rid)
+
+        try {
+            // init helper
+            val helper = MarshallerHelper(Any::class.java, RevokePrescriptionParam::class.java)
+
+            // get Recipe ETK
+            val etkRecipes = etkHelper.recipe_ETK
+
+            // create params
+            val params = RevokePrescriptionParam()
+            params.rid = rid
+            params.reason = reason
+            params.prescriberId = nihii
+            params.symmKey = symmKey.encoded
+
+            // create request
+            val request = be.fgov.ehealth.recipe.protocol.v4.RevokePrescriptionRequest()
+            request.securedRevokePrescriptionRequest = createSecuredContentType(sealRequest(getCrypto(credential),etkRecipes[0], helper.toXMLByteArray(params)))
+            request.programId = PropertyHandler.getInstance().getProperty("programIdentification") ?: "freehealth-connector"
+            request.issueInstant = DateTime()
+            request.id = "id" + UUID.randomUUID().toString()
+
+            // call WS
+            try {
+                val response = recipePrescriberServiceV4.revokePrescription(samlToken, credential, request)
+                val marshaller = MarshallerHelper(RevokePrescriptionResult::class.java, Any::class.java)
+                checkStatus(marshaller.unsealWithSymmKey(response!!.securedRevokePrescriptionResponse.securedContent, symmKey))
+            } catch (cte: ClientTransportException) {
+                throw IntegrationModuleException(I18nHelper.getLabel("error.connection.prescriber"), cte)
+            }
+
+        } catch (t: Throwable) {
+            Exceptionutils.errorHandler(t)
+        }
+
+    }
+
 
     @Throws(IntegrationModuleException::class)
     protected fun checkStatus(response: StatusResponseType) {
