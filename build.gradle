@@ -117,6 +117,7 @@ dependencies {
 	compile('org.springframework.boot:spring-boot-starter-security')
 	compile("org.springframework.ws:spring-ws-core")
 	compile("org.springframework:spring-orm")
+
 	compile("com.nimbusds:nimbus-jose-jwt:9.7")
 	compile("com.nimbusds:oauth2-oidc-sdk:9.2.1")
 
