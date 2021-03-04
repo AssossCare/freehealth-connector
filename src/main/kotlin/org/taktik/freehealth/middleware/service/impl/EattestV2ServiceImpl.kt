@@ -27,6 +27,7 @@ import be.fgov.ehealth.messageservices.mycarenet.core.v1.RequestType
 import be.fgov.ehealth.messageservices.mycarenet.core.v1.SendTransactionRequest
 import be.fgov.ehealth.messageservices.mycarenet.core.v1.SendTransactionResponse
 import be.fgov.ehealth.mycarenet.attest.protocol.v2.CancelAttestationRequest
+import be.fgov.ehealth.mycarenet.attest.protocol.v2.SendAttestationRequest
 import be.fgov.ehealth.mycarenet.commons.core.v3.CareProviderType
 import be.fgov.ehealth.mycarenet.commons.core.v3.CareReceiverIdType
 import be.fgov.ehealth.mycarenet.commons.core.v3.CommonInputType
@@ -37,6 +38,7 @@ import be.fgov.ehealth.mycarenet.commons.core.v3.OriginType
 import be.fgov.ehealth.mycarenet.commons.core.v3.PackageType
 import be.fgov.ehealth.mycarenet.commons.core.v3.RoutingType
 import be.fgov.ehealth.mycarenet.commons.core.v3.ValueRefString
+import be.fgov.ehealth.mycarenet.mhm.protocol.v1.SendSubscriptionRequest
 import be.fgov.ehealth.standards.kmehr.mycarenet.cd.v1.CDCONTENT
 import be.fgov.ehealth.standards.kmehr.mycarenet.cd.v1.CDCONTENTschemes
 import be.fgov.ehealth.standards.kmehr.mycarenet.cd.v1.CDCONTENTschemes.CD_NIHDI
@@ -274,12 +276,7 @@ class EattestV2ServiceImpl(private val stsService: STSService, private val keyDe
                 }
                 this.id = IdGeneratorFactory.getIdGenerator("xsid").generateId()
                 this.issueInstant = DateTime()
-                this.routing = RoutingType().apply {
-                    careReceiver = CareReceiverIdType().apply {
-                        ssin = patientSsin
-                    }
-                    this.referenceDate = refDateTime
-                }
+
                 this.detail = BlobMapper.mapBlobTypefromBlob(blob)
                 this.xades = BlobUtil.generateXades(credential, this.detail, "eattest")
             }
@@ -557,7 +554,7 @@ class EattestV2ServiceImpl(private val stsService: STSService, private val keyDe
                         this.transactionResponse = MarshallerHelper(SendTransactionResponse::class.java, SendTransactionResponse::class.java).toXMLByteArray(decryptedAndVerifiedResponse.sendTransactionResponse).toString(Charsets.UTF_8)
                         this.transactionRequest = MarshallerHelper(SendTransactionRequest::class.java, SendTransactionRequest::class.java).toXMLByteArray(sendTransactionRequest).toString(Charsets.UTF_8)
                         sendAttestationResponse?.soapResponse?.writeTo(this.soapResponseOutputStream())
-                        sendAttestationResponse?.soapRequest?.writeTo(this.soapRequestOutputStream())
+                        soapRequest = MarshallerHelper(SendAttestationRequest::class.java, SendAttestationRequest::class.java).toXMLByteArray(sendAttestationRequest).toString(Charsets.UTF_8)
                     },
                     kmehrMessage = encryptedKnownContent?.businessContent?.value
                                             )
@@ -571,7 +568,7 @@ class EattestV2ServiceImpl(private val stsService: STSService, private val keyDe
                     this.transactionResponse = MarshallerHelper(SendTransactionResponse::class.java, SendTransactionResponse::class.java).toXMLByteArray(decryptedAndVerifiedResponse.sendTransactionResponse).toString(Charsets.UTF_8)
                     this.transactionRequest = MarshallerHelper(SendTransactionRequest::class.java, SendTransactionRequest::class.java).toXMLByteArray(sendTransactionRequest).toString(Charsets.UTF_8)
                     sendAttestationResponse?.soapResponse?.writeTo(this.soapResponseOutputStream())
-                    sendAttestationResponse?.soapRequest?.writeTo(this.soapRequestOutputStream())
+                    soapRequest = MarshallerHelper(SendAttestationRequest::class.java, SendAttestationRequest::class.java).toXMLByteArray(sendAttestationRequest).toString(Charsets.UTF_8)
                 },
                 kmehrMessage = encryptedKnownContent?.businessContent?.value
                                              )
