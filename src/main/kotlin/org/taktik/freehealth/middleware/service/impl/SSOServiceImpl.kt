@@ -22,8 +22,11 @@ import org.taktik.connector.technical.service.keydepot.KeyDepotService
 import org.taktik.connector.technical.service.sso.SingleSignOnService
 import org.taktik.connector.technical.service.sso.impl.SingleSignOnServiceImpl
 import org.taktik.connector.technical.service.sts.security.impl.KeyStoreCredential
+import org.taktik.freehealth.middleware.dao.CouchdbUserDetailsService
+import org.taktik.freehealth.middleware.dao.KeystoreProviderService
 import org.taktik.freehealth.middleware.dao.User
 import org.taktik.freehealth.middleware.domain.sts.BearerToken
+import org.taktik.freehealth.middleware.exception.MissingKeystoreException
 import org.taktik.freehealth.middleware.service.SSOService
 import org.taktik.freehealth.middleware.service.STSService
 import java.net.URI
@@ -34,7 +37,7 @@ import java.util.UUID
 
 
 @Service
-class SSOServiceImpl(private val stsService: STSService, private val keyDepotService: KeyDepotService) : SSOService {
+class SSOServiceImpl(private val stsService: STSService, private val userDetailsService: KeystoreProviderService) : SSOService {
     val ssosi: SingleSignOnService = SingleSignOnServiceImpl()
 
     override fun getBearerToken(tokenId: UUID, keystoreId: UUID, passPhrase: String, profile: String?): BearerToken? {
@@ -74,8 +77,15 @@ class SSOServiceImpl(private val stsService: STSService, private val keyDepotSer
 
         stsService.getSAMLToken(tokenId, keystoreId, passPhrase) ?: throw IllegalArgumentException("Cannot obtain token for SSO operations")
 
-        val orgKeystore = stsService.getKeyStore(orgKeystoreUuid, orgKeystorePassword) ?: throw IllegalStateException("Missing org keystore")
-        val key = orgKeystore.getKey("authentication", passPhrase.toCharArray())
+        val orgKeystore = try { stsService.getKeyStore(orgKeystoreUuid, orgKeystorePassword) } catch (e: MissingKeystoreException) { null }?:
+                            userDetailsService.getKeystore(principal, if (isAcceptance) "org-keystore-acc" else "org-keystore-prod")?.let { keyStore ->
+                                stsService.uploadKeystore(keyStore).let {
+                                    if (it != orgKeystoreUuid) throw java.lang.IllegalStateException("Mismatch in keystore UUID")
+                                    stsService.getKeyStore(it, orgKeystorePassword)
+                                }
+                            } ?: throw IllegalStateException("Missing org keystore")
+
+        val key = orgKeystore.getKey("authentication", orgKeystorePassword.toCharArray())
 
         val tokenRequest = TokenRequest(
             URI(if (isAcceptance) "https://api-acpt.ehealth.fgov.be/auth/realms/M2M/protocol/openid-connect/token" else "https://api.ehealth.fgov.be/auth/realms/M2M/protocol/openid-connect/token"),

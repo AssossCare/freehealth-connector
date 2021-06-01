@@ -103,7 +103,7 @@ class MhmController(val mhmService: MhmService) {
             io = io,
             ioMembership = ioMembership,
             startDate = startDate,
-            isTrial = isTrial?: false,
+            isTrial = isTrial ?: false,
             signatureType = signatureType,
             isRecovery = isRecovery ?: false,
             isTestForNotify = isTestForNotify ?: false)
