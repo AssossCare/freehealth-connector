@@ -276,6 +276,7 @@ class EattestV2ServiceImpl(private val stsService: STSService, private val keyDe
                 }
                 this.id = IdGeneratorFactory.getIdGenerator("xsid").generateId()
                 this.issueInstant = DateTime()
+
                 this.detail = BlobMapper.mapBlobTypefromBlob(blob)
                 this.xades = BlobUtil.generateXades(credential, this.detail, "eattest")
             }
