@@ -254,28 +254,6 @@ class STSServiceImpl(val keystoresMap: IMap<UUID, ByteArray>, val tokensMap: IMa
                     "urn:be:fgov:certified-namespace:ehealth"
                 )
             )
-            "groupofnurses" -> listOf(
-                SAMLAttributeDesignator(
-                    "urn:be:fgov:ehealth:1.0:groupofnurses:nihii-number",
-                    "urn:be:fgov:identification-namespace"
-                ),
-                SAMLAttributeDesignator(
-                    "urn:be:fgov:ehealth:1.0:certificateholder:groupofnurses:nihii-number",
-                    "urn:be:fgov:identification-namespace"
-                ),
-                SAMLAttributeDesignator(
-                    "urn:be:fgov:ehealth:1.0:certificateholder:groupofnurses:nihii-number",
-                    "urn:be:fgov:certified-namespace:ehealth"
-                ),
-                SAMLAttributeDesignator(
-                    "urn:be:fgov:ehealth:1.0:groupofnurses:nihii-number:recognisedgroupofnurses:nihii11",
-                    "urn:be:fgov:certified-namespace:ehealth"
-                ),
-                SAMLAttributeDesignator(
-                    "urn:be:fgov:ehealth:1.0:certificateholder:groupofnurses:nihii-number:recognisedgroupofnurses:boolean",
-                    "urn:be:fgov:certified-namespace:ehealth"
-                )
-            )
             "dentist" -> listOf(
                 SAMLAttributeDesignator(
                     "urn:be:fgov:ehealth:1.0:certificateholder:person:ssin",
@@ -407,6 +385,50 @@ class STSServiceImpl(val keystoresMap: IMap<UUID, ByteArray>, val tokensMap: IMa
                     "urn:be:fgov:certified-namespace:ehealth"
                 )
             )
+            "enterprise" -> listOf(
+                SAMLAttributeDesignator(
+                    "urn:be:fgov:kbo-bce:organization:cbe-number",
+                    "urn:be:fgov:identification-namespace"
+                ),
+                SAMLAttributeDesignator(
+                    "urn:be:fgov:ehealth:1.0:certificateholder:enterprise:cbe-number",
+                    "urn:be:fgov:identification-namespace"
+                ),
+                SAMLAttributeDesignator(
+                    "urn:be:fgov:kbo-bce:organization:cbe-number:ehealth:1.0:enterprise:name",
+                    "urn:be:fgov:identification-namespace"
+                ),
+                SAMLAttributeDesignator(
+                    "urn:be:fgov:ehealth:1.0:certificateholder:enterprise:cbe-number:ehealth:1.0:cbe_daas_authorized:boolean",
+                    "urn:be:fgov:certifiednamespace:ehealth"
+                ),
+                SAMLAttributeDesignator(
+                    "urn:be:fgov:ehealth:1.0:certificateholder:recognisedorganization:boolean",
+                    "urn:be:fgov:certified-namespace:ehealth"
+                ),
+                SAMLAttributeDesignator(
+                    "urn:be:fgov:organization:name",
+                    "urn:be:fgov:certified-namespace:ehealth"
+                )
+            )
+            "ehp" -> listOf(
+                SAMLAttributeDesignator(
+                    "urn:be:fgov:ehealth:1.0:organization:ehp-number",
+                    "urn:be:fgov:identification-namespace"
+                ),
+                SAMLAttributeDesignator(
+                    "urn:be:fgov:ehealth:1.0:certificateholder:organization:ehp-number",
+                    "urn:be:fgov:identification-namespace"
+                ),
+                SAMLAttributeDesignator(
+                    "urn:be:fgov:ehealth:1.0:certificateholder:organization:ehpnumber:ehealth:1.0:ehp_daas_authorized:boolean",
+                    "urn:be:fgov:certifiednamespace:ehealth"
+                ),
+                SAMLAttributeDesignator(
+                    "urn:be:fgov:ehealth:1.0:certificateholder:recognisedorganization:boolean",
+                    "urn:be:fgov:certified-namespace:ehealth"
+                )
+            )
             else -> throw IllegalArgumentException("unsupported quality")
         } + extraDesignators.map { SAMLAttributeDesignator(it.second, it.first) }
 
@@ -467,6 +489,30 @@ class STSServiceImpl(val keystoresMap: IMap<UUID, ByteArray>, val tokensMap: IMa
                 ),
                 SAMLAttribute(
                     "urn:be:fgov:ehealth:1.0:certificateholder:groupofnurses:nihii-number",
+                    "urn:be:fgov:identification-namespace",
+                    nihiiOrSsin
+                )
+            )
+            "enterprise" -> listOf(
+                SAMLAttribute(
+                    "urn:be:fgov:kbo-bce:organization:cbe-number",
+                    "urn:be:fgov:identification-namespace",
+                    nihiiOrSsin
+                ),
+                SAMLAttribute(
+                    "urn:be:fgov:ehealth:1.0:certificateholder:enterprise:cbe-number",
+                    "urn:be:fgov:identification-namespace",
+                    nihiiOrSsin
+                )
+            )
+            "ehp" -> listOf(
+                SAMLAttribute(
+                    "urn:be:fgov:ehealth:1.0:organization:ehp-number",
+                    "urn:be:fgov:identification-namespace",
+                    nihiiOrSsin
+                ),
+                SAMLAttribute(
+                    "urn:be:fgov:ehealth:1.0:certificateholder:organization:ehp-number",
                     "urn:be:fgov:identification-namespace",
                     nihiiOrSsin
                 )
