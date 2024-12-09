@@ -387,15 +387,7 @@ class STSServiceImpl(val keystoresMap: IMap<UUID, ByteArray>, val tokensMap: IMa
             )
             "enterprise" -> listOf(
                 SAMLAttributeDesignator(
-                    "urn:be:fgov:kbo-bce:organization:cbe-number",
-                    "urn:be:fgov:identification-namespace"
-                ),
-                SAMLAttributeDesignator(
                     "urn:be:fgov:ehealth:1.0:certificateholder:enterprise:cbe-number",
-                    "urn:be:fgov:identification-namespace"
-                ),
-                SAMLAttributeDesignator(
-                    "urn:be:fgov:kbo-bce:organization:cbe-number:ehealth:1.0:enterprise:name",
                     "urn:be:fgov:identification-namespace"
                 ),
                 SAMLAttributeDesignator(
@@ -404,10 +396,6 @@ class STSServiceImpl(val keystoresMap: IMap<UUID, ByteArray>, val tokensMap: IMa
                 ),
                 SAMLAttributeDesignator(
                     "urn:be:fgov:ehealth:1.0:certificateholder:recognisedorganization:boolean",
-                    "urn:be:fgov:certified-namespace:ehealth"
-                ),
-                SAMLAttributeDesignator(
-                    "urn:be:fgov:organization:name",
                     "urn:be:fgov:certified-namespace:ehealth"
                 )
             )
@@ -494,11 +482,6 @@ class STSServiceImpl(val keystoresMap: IMap<UUID, ByteArray>, val tokensMap: IMa
                 )
             )
             "enterprise" -> listOf(
-                SAMLAttribute(
-                    "urn:be:fgov:kbo-bce:organization:cbe-number",
-                    "urn:be:fgov:identification-namespace",
-                    nihiiOrSsin
-                ),
                 SAMLAttribute(
                     "urn:be:fgov:ehealth:1.0:certificateholder:enterprise:cbe-number",
                     "urn:be:fgov:identification-namespace",
